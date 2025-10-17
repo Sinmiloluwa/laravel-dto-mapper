@@ -1,0 +1,30 @@
+{
+    "name": "sinmiloluwa/laravel-dto-mapper",
+    "description": "Elegant, type-safe DTO mapping for Laravel models and arrays.",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Sinmiloluwa\\LaravelDtoMapper\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "LaravelDtoMapper\\DtoServiceProvider"
+            ]
+        }
+    },
+    "authors": [
+        {
+            "name": "Sinmiloluwa",
+            "email": "mofeoluwae@gmail.com"
+        }
+    ],
+    "require": {
+        "illuminate/support": "^10.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.18",
+        "phpunit/phpunit": "^10.5"
+    }
+}
