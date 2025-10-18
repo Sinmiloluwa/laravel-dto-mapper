@@ -2,19 +2,19 @@
 
 namespace Orchestra\Testbench\Console;
 
-use Illuminate\Console\Command;
 use Illuminate\Console\Concerns\InteractsWithSignals;
-use Illuminate\Console\Signals;
 use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Application as LaravelApplication;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
-use Orchestra\Testbench\Foundation\Application;
+use Orchestra\Testbench\Foundation\Application as Testbench;
 use Orchestra\Testbench\Foundation\Bootstrap\LoadMigrationsFromArray;
 use Orchestra\Testbench\Foundation\Config;
 use Orchestra\Testbench\Foundation\Console\Concerns\CopyTestbenchFiles;
+use Orchestra\Testbench\Foundation\Console\Signals;
+use Orchestra\Testbench\Foundation\Console\TerminatingConsole;
 use Orchestra\Testbench\Foundation\TestbenchServiceProvider;
 use Orchestra\Testbench\Workbench\Workbench;
 use Symfony\Component\Console\Application as ConsoleApplication;
@@ -24,8 +24,15 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\SignalRegistry\SignalRegistry;
 use Throwable;
 
-use function Orchestra\Testbench\transform_relative_path;
+use function Orchestra\Sidekick\is_symlink;
+use function Orchestra\Sidekick\join_paths;
+use function Orchestra\Sidekick\transform_relative_path;
 
+/**
+ * @phpstan-import-type TConfig from \Orchestra\Testbench\Foundation\Config
+ *
+ * @codeCoverageIgnore
+ */
 class Commander
 {
     use CopyTestbenchFiles;
@@ -60,15 +67,35 @@ class Commander
     protected $environmentFile = '.env';
 
     /**
+     * The testbench implementation class.
+     *
+     * @var class-string<\Orchestra\Testbench\Foundation\Application>
+     */
+    protected static string $testbench = Testbench::class;
+
+    /**
+     * List of providers.
+     *
+     * @var array<int, class-string<\Illuminate\Support\ServiceProvider>>
+     */
+    protected array $providers = [
+        TestbenchServiceProvider::class,
+    ];
+
+    /**
      * Construct a new Commander.
      *
-     * @param  array|\Orchestra\Testbench\Foundation\Config  $config
+     * @param  \Orchestra\Testbench\Foundation\Config|array  $config
      * @param  string  $workingPath
+     *
+     * @phpstan-param \Orchestra\Testbench\Foundation\Config|TConfig  $config
      */
     public function __construct($config, string $workingPath)
     {
         $this->config = $config instanceof Config ? $config : new Config($config);
         $this->workingPath = $workingPath;
+
+        $_ENV['TESTBENCH_ENVIRONMENT_FILENAME'] = $this->environmentFile;
     }
 
     /**
@@ -78,8 +105,8 @@ class Commander
      */
     public function handle()
     {
-        $input = new ArgvInput();
-        $output = new ConsoleOutput();
+        $input = new ArgvInput;
+        $output = new ConsoleOutput;
 
         try {
             $laravel = $this->laravel();
@@ -93,8 +120,9 @@ class Commander
         } catch (Throwable $error) {
             $status = $this->handleException($output, $error);
         } finally {
-            $this->handleTerminatingConsole();
+            TerminatingConsole::handle();
             Workbench::flush();
+            static::$testbench::flushState();
 
             $this->untrap();
         }
@@ -103,47 +131,48 @@ class Commander
     }
 
     /**
-     * Create Laravel application.
+     * Create a Laravel application.
      *
      * @return \Illuminate\Foundation\Application
      */
     public function laravel()
     {
         if (! $this->app instanceof LaravelApplication) {
-            $laravelBasePath = $this->getBasePath();
+            $APP_BASE_PATH = $this->getApplicationBasePath();
+            $VENDOR_PATH = join_paths($this->workingPath, 'vendor');
 
-            tap(Application::createVendorSymlink($laravelBasePath, $this->workingPath.'/vendor'), function ($app) use ($laravelBasePath) {
-                $filesystem = new Filesystem();
-
-                $this->copyTestbenchConfigurationFile($app, $filesystem, $this->workingPath);
-
-                if (! file_exists("{$laravelBasePath}/.env")) {
-                    $this->copyTestbenchDotEnvFile($app, $filesystem, $this->workingPath);
+            TerminatingConsole::beforeWhen(
+                ! is_symlink(join_paths($APP_BASE_PATH, 'vendor')),
+                static function () use ($APP_BASE_PATH) {
+                    static::$testbench::deleteVendorSymlink($APP_BASE_PATH);
                 }
-            });
-
-            $hasEnvironmentFile = file_exists("{$laravelBasePath}/.env");
-
-            $options = array_filter([
-                'load_environment_variables' => $hasEnvironmentFile,
-                'extra' => $this->config->getExtraAttributes(),
-            ]);
-
-            $this->app = Application::create(
-                basePath: $this->getBasePath(),
-                resolvingCallback: function ($app) {
-                    Workbench::startWithProviders($app, $this->config);
-                    Workbench::discoverRoutes($app, $this->config);
-
-                    (new LoadMigrationsFromArray(
-                        $this->config['migrations'] ?? [],
-                        $this->config['seeders'] ?? false,
-                    ))->bootstrap($app);
-
-                    \call_user_func($this->resolveApplicationCallback(), $app);
-                },
-                options: $options,
             );
+
+            $filesystem = new Filesystem;
+
+            $hasEnvironmentFile = static fn () => is_file(join_paths($APP_BASE_PATH, '.env'));
+
+            tap(
+                static::$testbench::createVendorSymlink($APP_BASE_PATH, $VENDOR_PATH),
+                function ($app) use ($filesystem, $hasEnvironmentFile) {
+                    $this->copyTestbenchConfigurationFile($app, $filesystem, $this->workingPath);
+
+                    if (! $hasEnvironmentFile()) {
+                        $this->copyTestbenchDotEnvFile($app, $filesystem, $this->workingPath);
+                    }
+                }
+            );
+
+            $this->app = static::$testbench::create(
+                basePath: $APP_BASE_PATH,
+                resolvingCallback: $this->resolveApplicationCallback(),
+                options: array_filter([
+                    'load_environment_variables' => $hasEnvironmentFile(),
+                    'extra' => $this->config->getExtraAttributes(),
+                ]),
+            );
+
+            $this->app->instance('TESTBENCH_COMMANDER', $this);
         }
 
         return $this->app;
@@ -156,17 +185,27 @@ class Commander
      */
     protected function resolveApplicationCallback()
     {
-        return static function ($app) {
-            $app->register(TestbenchServiceProvider::class);
+        return function ($app) {
+            Workbench::startWithProviders($app, $this->config);
+            Workbench::discoverRoutes($app, $this->config);
+
+            (new LoadMigrationsFromArray(
+                $this->config['migrations'] ?? [],
+                $this->config['seeders'] ?? false,
+            ))->bootstrap($app);
+
+            foreach ($this->providers as $provider) {
+                $app->register($provider);
+            }
         };
     }
 
     /**
-     * Get base path.
+     * Resolve the application's base path.
      *
      * @return string
      */
-    protected function getBasePath()
+    protected function getApplicationBasePath()
     {
         $path = $this->config['laravel'] ?? null;
 
@@ -180,13 +219,15 @@ class Commander
     }
 
     /**
-     * Get Application base path.
+     * Get the application's base path.
+     *
+     * @api
      *
      * @return string
      */
     public static function applicationBasePath()
     {
-        return Application::applicationBasePath();
+        return static::$testbench::applicationBasePath();
     }
 
     /**
@@ -217,17 +258,15 @@ class Commander
      */
     protected function prepareCommandSignals(): void
     {
-        Signals::resolveAvailabilityUsing(static function () {
-            return \extension_loaded('pcntl');
-        });
+        Signals::resolveAvailabilityUsing(static fn () => \extension_loaded('pcntl'));
 
         Signals::whenAvailable(function () {
-            $this->signals ??= new Signals(new SignalRegistry());
+            $this->signals ??= new Signals(new SignalRegistry);
 
-            Collection::make(Arr::wrap([SIGINT, SIGTERM, SIGQUIT]))
+            (new Collection(Arr::wrap([SIGTERM, SIGINT, SIGHUP, SIGUSR1, SIGUSR2, SIGQUIT])))
                 ->each(
                     fn ($signal) => $this->signals->register($signal, function () use ($signal) {
-                        $this->handleTerminatingConsole();
+                        TerminatingConsole::handle();
                         Workbench::flush();
 
                         $status = match ($signal) {
@@ -238,9 +277,32 @@ class Commander
 
                         $this->untrap();
 
+                        if (\in_array($status, [130])) {
+                            exit;
+                        }
+
                         exit($status);
                     })
                 );
+        }, function () {
+            if (windows_os() && PHP_SAPI === 'cli' && \function_exists('sapi_windows_set_ctrl_handler')) {
+                sapi_windows_set_ctrl_handler(static function ($event) {
+                    TerminatingConsole::handle();
+                    Workbench::flush();
+
+                    $status = match ($event) {
+                        PHP_WINDOWS_EVENT_CTRL_C => 572,
+                        PHP_WINDOWS_EVENT_CTRL_BREAK => 572,
+                        default => 0,
+                    };
+
+                    if (\in_array($status, [0])) {
+                        exit;
+                    }
+
+                    exit($status);
+                });
+            }
         });
     }
 }

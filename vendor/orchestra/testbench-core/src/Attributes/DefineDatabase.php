@@ -4,11 +4,12 @@ namespace Orchestra\Testbench\Attributes;
 
 use Attribute;
 use Closure;
-use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Orchestra\Testbench\Contracts\Attributes\Actionable as ActionableContract;
+use Orchestra\Testbench\Contracts\Attributes\AfterEach as AfterEachContract;
+use Orchestra\Testbench\Contracts\Attributes\BeforeEach as BeforeEachContract;
 
 #[Attribute(Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
-final class DefineDatabase implements ActionableContract
+final class DefineDatabase implements ActionableContract, AfterEachContract, BeforeEachContract
 {
     /**
      * Construct a new attribute.
@@ -19,8 +20,28 @@ final class DefineDatabase implements ActionableContract
     public function __construct(
         public string $method,
         public bool $defer = true
-    ) {
-        //
+    ) {}
+
+    /**
+     * Handle the attribute.
+     *
+     * @param  \Illuminate\Foundation\Application  $app
+     * @return void
+     */
+    public function beforeEach($app)
+    {
+        ResetRefreshDatabaseState::run();
+    }
+
+    /**
+     * Handle the attribute.
+     *
+     * @param  \Illuminate\Foundation\Application  $app
+     * @return void
+     */
+    public function afterEach($app)
+    {
+        ResetRefreshDatabaseState::run();
     }
 
     /**
@@ -32,9 +53,6 @@ final class DefineDatabase implements ActionableContract
      */
     public function handle($app, Closure $action): ?Closure
     {
-        RefreshDatabaseState::$migrated = false;
-        RefreshDatabaseState::$lazilyRefreshed = false;
-
         $resolver = function () use ($app, $action) {
             \call_user_func($action, $this->method, [$app]);
         };

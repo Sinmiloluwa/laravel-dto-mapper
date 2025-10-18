@@ -3,8 +3,11 @@
 namespace Orchestra\Testbench\Bootstrap;
 
 use Illuminate\Log\LogManager;
+use Orchestra\Sidekick\Env;
 use Orchestra\Testbench\Exceptions\DeprecatedException;
-use Orchestra\Testbench\Foundation\Env;
+use PHPUnit\Runner\ErrorHandler;
+
+use function Orchestra\Sidekick\join_paths;
 
 /**
  * @internal
@@ -12,50 +15,27 @@ use Orchestra\Testbench\Foundation\Env;
 final class HandleExceptions extends \Illuminate\Foundation\Bootstrap\HandleExceptions
 {
     /**
-     * Testbench Class.
-     *
-     * @var \PHPUnit\Framework\TestCase|null
-     */
-    protected $testbench;
-
-    /**
-     * Create a new exception handler instance.
-     *
-     * @param  \PHPUnit\Framework\TestCase|null  $testbench
-     */
-    public function __construct($testbench = null)
-    {
-        $this->testbench = $testbench;
-    }
-
-    /**
-     * Reports a deprecation to the "deprecations" logger.
-     *
-     * @param  string  $message
-     * @param  string  $file
-     * @param  int  $line
-     * @param  int  $level
-     * @return void
+     * {@inheritDoc}
      *
      * @throws \Orchestra\Testbench\Exceptions\DeprecatedException
      */
     #[\Override]
     public function handleDeprecationError($message, $file, $line, $level = E_DEPRECATED)
     {
-        parent::handleDeprecationError($message, $file, $line, $level);
+        rescue(function () use ($message, $file, $line, $level) {
+            parent::handleDeprecationError($message, $file, $line, $level);
+        }, null, false);
 
-        $testbenchConvertDeprecationsToExceptions = Env::get('TESTBENCH_CONVERT_DEPRECATIONS_TO_EXCEPTIONS', false);
+        $testbenchConvertDeprecationsToExceptions = (bool) Env::get(
+            'TESTBENCH_CONVERT_DEPRECATIONS_TO_EXCEPTIONS', false
+        );
 
         if ($testbenchConvertDeprecationsToExceptions === true) {
             throw new DeprecatedException($message, $level, $file, $line);
         }
     }
 
-    /**
-     * Ensure the "deprecations" logger is configured.
-     *
-     * @return void
-     */
+    /** {@inheritDoc} */
     #[\Override]
     protected function ensureDeprecationLoggerIsConfigured()
     {
@@ -67,16 +47,18 @@ final class HandleExceptions extends \Illuminate\Foundation\Bootstrap\HandleExce
 
             /** @var array{channel?: string, trace?: bool}|string|null $options */
             $options = $config->get('logging.deprecations');
+            $trace = Env::get('LOG_DEPRECATIONS_TRACE', false);
 
             if (\is_array($options)) {
                 $driver = $options['channel'] ?? 'null';
+                $trace = $options['trace'] ?? true;
             } else {
                 $driver = $options ?? 'null';
             }
 
             if ($driver === 'single') {
                 $config->set('logging.channels.deprecations', array_merge($config->get('logging.channels.single'), [
-                    'path' => self::$app->storagePath('logs/deprecations.log'),
+                    'path' => self::$app->storagePath(join_paths('logs', 'deprecations.log')),
                 ]));
             } else {
                 $config->set('logging.channels.deprecations', $config->get("logging.channels.{$driver}"));
@@ -84,20 +66,70 @@ final class HandleExceptions extends \Illuminate\Foundation\Bootstrap\HandleExce
 
             $config->set('logging.deprecations', [
                 'channel' => 'deprecations',
-                'trace' => true,
+                'trace' => $trace,
             ]);
         });
     }
 
-    /**
-     * Determine if deprecation error should be ignored.
-     *
-     * @return bool
-     */
+    /** {@inheritDoc} */
     #[\Override]
     protected function shouldIgnoreDeprecationErrors()
     {
         return ! class_exists(LogManager::class)
-            || ! self::$app->hasBeenBootstrapped();
+            || ! self::$app->hasBeenBootstrapped()
+            || ! Env::get('LOG_DEPRECATIONS_WHILE_TESTING', true);
+    }
+
+    /** {@inheritDoc} */
+    #[\Override]
+    public static function forgetApp()
+    {
+        if (\is_null(self::$app)) {
+            return;
+        }
+
+        self::flushHandlersState();
+
+        self::$app = null; /** @phpstan-ignore assign.propertyType */
+        self::$reservedMemory = null;
+    }
+
+    /**
+     * Flush the bootstrapper's global handlers state.
+     *
+     * @return void
+     */
+    public static function flushHandlersState()
+    {
+        while (true) {
+            $previousHandler = set_exception_handler(static fn () => null);
+            restore_exception_handler();
+
+            if ($previousHandler === null) {
+                break;
+            }
+
+            restore_exception_handler();
+        }
+
+        while (true) {
+            $previousHandler = set_error_handler(static fn () => null); /** @phpstan-ignore argument.type */
+            restore_error_handler();
+
+            if ($previousHandler === null) {
+                break;
+            }
+
+            restore_error_handler();
+        }
+
+        if (class_exists(ErrorHandler::class)) {
+            $instance = ErrorHandler::instance();
+
+            if ((fn () => $this->enabled ?? false)->call($instance)) {
+                $instance->disable();
+                $instance->enable();
+            }
+        }
     }
 }

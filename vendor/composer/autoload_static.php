@@ -12,27 +12,29 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
         'e69f7f6ee287b969198c3c9d6777bd38' => __DIR__ . '/..' . '/symfony/polyfill-intl-normalizer/bootstrap.php',
         '320cde22f66dd4f5d3fd621d3e88b98f' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
         '662a729f963d39afe703c9d9b7ab4a8c' => __DIR__ . '/..' . '/symfony/polyfill-php83/bootstrap.php',
-        '667aeda72477189d0494fecd327c3641' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
-        'a4a119a56e50fbb293281d9a48007e0e' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
         '8825ede83f2f289127722d4e842cf7e8' => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme/bootstrap.php',
-        'f598d06aa772fa33d905e87be6398fb1' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
         'b6b991a57620e2fb6b2f66f03fe9ddc2' => __DIR__ . '/..' . '/symfony/string/Resources/functions.php',
-        '7b11c4dc42b3b3023073cb14e519683c' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
-        'def43f6c87e4f8dfd0c9e1b1bab14fe8' => __DIR__ . '/..' . '/symfony/polyfill-iconv/bootstrap.php',
-        'e39a8b23c42d4e1452234d762b03835a' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
-        'eb46fcca3fbadc07be542e9e42c8b07c' => __DIR__ . '/..' . '/orchestra/testbench-core/src/helpers.php',
+        'a4a119a56e50fbb293281d9a48007e0e' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
+        '667aeda72477189d0494fecd327c3641' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
+        'f598d06aa772fa33d905e87be6398fb1' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
+        '2a5e5bba4d7a0bb0a6ded8efc32d9710' => __DIR__ . '/..' . '/orchestra/sidekick/src/Eloquent/functions.php',
+        'ce3eb9cbcd1a122678681a7fec8dfbf4' => __DIR__ . '/..' . '/orchestra/sidekick/src/Http/functions.php',
+        '26c36baaceab0736027f3a13d83fc1a6' => __DIR__ . '/..' . '/orchestra/sidekick/src/functions.php',
+        '35a6ad97d21e794e7e22a17d806652e4' => __DIR__ . '/..' . '/nunomaduro/termwind/src/Functions.php',
+        '1ff88ee2daa64f07d9a89cd819aa198e' => __DIR__ . '/..' . '/orchestra/testbench-core/src/functions.php',
         '09f6b20656683369174dd6fa83b7e5fb' => __DIR__ . '/..' . '/symfony/polyfill-uuid/bootstrap.php',
         'a1105708a18b76903365ca1c4aa61b02' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
         '47e1160838b5e5a10346ac4084b58c23' => __DIR__ . '/..' . '/laravel/prompts/src/helpers.php',
-        '35a6ad97d21e794e7e22a17d806652e4' => __DIR__ . '/..' . '/nunomaduro/termwind/src/Functions.php',
-        'b33e3d135e5d9e47d845c576147bda89' => __DIR__ . '/..' . '/php-di/php-di/src/functions.php',
+        'e39a8b23c42d4e1452234d762b03835a' => __DIR__ . '/..' . '/ramsey/uuid/src/functions.php',
+        '476ca15b8d69b04665cd879be9cb4c68' => __DIR__ . '/..' . '/laravel/framework/src/Illuminate/Collections/functions.php',
         '265b4faa2b3a9766332744949e83bf97' => __DIR__ . '/..' . '/laravel/framework/src/Illuminate/Collections/helpers.php',
         'c7a3c339e7e14b60e06a2d7fcce9476b' => __DIR__ . '/..' . '/laravel/framework/src/Illuminate/Events/functions.php',
+        'f57d353b41eb2e234b26064d63d8c5dd' => __DIR__ . '/..' . '/laravel/framework/src/Illuminate/Filesystem/functions.php',
         'f0906e6318348a765ffb6eb24e0d0938' => __DIR__ . '/..' . '/laravel/framework/src/Illuminate/Foundation/helpers.php',
         '58571171fd5812e6e447dce228f52f4d' => __DIR__ . '/..' . '/laravel/framework/src/Illuminate/Support/helpers.php',
         '801c31d8ed748cfa537fa45402288c95' => __DIR__ . '/..' . '/psy/psysh/src/functions.php',
-        '3074abeef0bacf5811f59e9dee6311d1' => __DIR__ . '/..' . '/spatie/ray/src/helpers.php',
         '6124b4c8570aa390c21fafd04a26c69f' => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy/deep_copy.php',
+        'a1cfe24d14977df6878b9bf804af2d1c' => __DIR__ . '/..' . '/nunomaduro/collision/src/Adapters/Phpunit/Autoload.php',
         'c72349b1fe8d0deeedd3a52e8aa814d8' => __DIR__ . '/..' . '/mockery/mockery/library/helpers.php',
         'ce9671a430e4846b44e1c68c7611f9f5' => __DIR__ . '/..' . '/mockery/mockery/library/Mockery.php',
         'ec07570ca5a812141189b1fa81503674' => __DIR__ . '/..' . '/phpunit/phpunit/src/Framework/Assert/Functions.php',
@@ -43,14 +45,9 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
         array (
             'voku\\' => 5,
         ),
-        'Z' => 
-        array (
-            'ZBateson\\StreamDecorators\\' => 26,
-            'ZBateson\\MbWrapper\\' => 19,
-            'ZBateson\\MailMimeParser\\' => 24,
-        ),
         'W' => 
         array (
+            'Whoops\\' => 7,
             'Webmozart\\Assert\\' => 17,
         ),
         'T' => 
@@ -67,7 +64,6 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
             'Symfony\\Polyfill\\Intl\\Normalizer\\' => 33,
             'Symfony\\Polyfill\\Intl\\Idn\\' => 26,
             'Symfony\\Polyfill\\Intl\\Grapheme\\' => 31,
-            'Symfony\\Polyfill\\Iconv\\' => 23,
             'Symfony\\Polyfill\\Ctype\\' => 23,
             'Symfony\\Contracts\\Translation\\' => 30,
             'Symfony\\Contracts\\Service\\' => 26,
@@ -77,7 +73,6 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
             'Symfony\\Component\\Uid\\' => 22,
             'Symfony\\Component\\Translation\\' => 30,
             'Symfony\\Component\\String\\' => 25,
-            'Symfony\\Component\\Stopwatch\\' => 28,
             'Symfony\\Component\\Routing\\' => 26,
             'Symfony\\Component\\Process\\' => 26,
             'Symfony\\Component\\Mime\\' => 23,
@@ -89,10 +84,6 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
             'Symfony\\Component\\ErrorHandler\\' => 31,
             'Symfony\\Component\\CssSelector\\' => 30,
             'Symfony\\Component\\Console\\' => 26,
-            'Spatie\\Ray\\' => 11,
-            'Spatie\\Macroable\\' => 17,
-            'Spatie\\LaravelRay\\' => 18,
-            'Spatie\\Backtrace\\' => 17,
             'Sinmiloluwa\\LaravelDtoMapper\\' => 29,
         ),
         'R' => 
@@ -105,7 +96,6 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
             'Psy\\' => 4,
             'Psr\\SimpleCache\\' => 16,
             'Psr\\Log\\' => 8,
-            'Psr\\Http\\Message\\' => 17,
             'Psr\\EventDispatcher\\' => 20,
             'Psr\\Container\\' => 14,
             'Psr\\Clock\\' => 10,
@@ -116,11 +106,13 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
         array (
             'Orchestra\\Workbench\\' => 20,
             'Orchestra\\Testbench\\' => 20,
+            'Orchestra\\Sidekick\\' => 19,
             'Orchestra\\Canvas\\Core\\' => 22,
             'Orchestra\\Canvas\\' => 17,
         ),
         'N' => 
         array (
+            'NunoMaduro\\Collision\\' => 21,
             'Nette\\' => 6,
         ),
         'M' => 
@@ -141,14 +133,12 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
         ),
         'I' => 
         array (
-            'Invoker\\' => 8,
             'Illuminate\\Support\\' => 19,
             'Illuminate\\' => 11,
         ),
         'G' => 
         array (
             'GuzzleHttp\\UriTemplate\\' => 23,
-            'GuzzleHttp\\Psr7\\' => 16,
             'GrahamCampbell\\ResultType\\' => 26,
         ),
         'F' => 
@@ -167,7 +157,6 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
             'Doctrine\\Common\\Lexer\\' => 22,
             'Dflydev\\DotAccessData\\' => 22,
             'DeepCopy\\' => 9,
-            'DI\\' => 3,
         ),
         'C' => 
         array (
@@ -187,17 +176,9 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
         array (
             0 => __DIR__ . '/..' . '/voku/portable-ascii/src/voku',
         ),
-        'ZBateson\\StreamDecorators\\' => 
+        'Whoops\\' => 
         array (
-            0 => __DIR__ . '/..' . '/zbateson/stream-decorators/src',
-        ),
-        'ZBateson\\MbWrapper\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/zbateson/mb-wrapper/src',
-        ),
-        'ZBateson\\MailMimeParser\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/zbateson/mail-mime-parser/src',
+            0 => __DIR__ . '/..' . '/filp/whoops/src/Whoops',
         ),
         'Webmozart\\Assert\\' => 
         array (
@@ -239,10 +220,6 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-intl-grapheme',
         ),
-        'Symfony\\Polyfill\\Iconv\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/symfony/polyfill-iconv',
-        ),
         'Symfony\\Polyfill\\Ctype\\' => 
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-ctype',
@@ -278,10 +255,6 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
         'Symfony\\Component\\String\\' => 
         array (
             0 => __DIR__ . '/..' . '/symfony/string',
-        ),
-        'Symfony\\Component\\Stopwatch\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/symfony/stopwatch',
         ),
         'Symfony\\Component\\Routing\\' => 
         array (
@@ -327,22 +300,6 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
         array (
             0 => __DIR__ . '/..' . '/symfony/console',
         ),
-        'Spatie\\Ray\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/spatie/ray/src',
-        ),
-        'Spatie\\Macroable\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/spatie/macroable/src',
-        ),
-        'Spatie\\LaravelRay\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/spatie/laravel-ray/src',
-        ),
-        'Spatie\\Backtrace\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/spatie/backtrace/src',
-        ),
         'Sinmiloluwa\\LaravelDtoMapper\\' => 
         array (
             0 => __DIR__ . '/../..' . '/src',
@@ -366,11 +323,6 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
         'Psr\\Log\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/log/src',
-        ),
-        'Psr\\Http\\Message\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/psr/http-factory/src',
-            1 => __DIR__ . '/..' . '/psr/http-message/src',
         ),
         'Psr\\EventDispatcher\\' => 
         array (
@@ -400,6 +352,10 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
         array (
             0 => __DIR__ . '/..' . '/orchestra/testbench-core/src',
         ),
+        'Orchestra\\Sidekick\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/orchestra/sidekick/src',
+        ),
         'Orchestra\\Canvas\\Core\\' => 
         array (
             0 => __DIR__ . '/..' . '/orchestra/canvas-core/src',
@@ -407,6 +363,10 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
         'Orchestra\\Canvas\\' => 
         array (
             0 => __DIR__ . '/..' . '/orchestra/canvas/src',
+        ),
+        'NunoMaduro\\Collision\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/nunomaduro/collision/src',
         ),
         'Nette\\' => 
         array (
@@ -452,10 +412,6 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
         array (
             0 => __DIR__ . '/..' . '/laravel/prompts/src',
         ),
-        'Invoker\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/php-di/invoker/src',
-        ),
         'Illuminate\\Support\\' => 
         array (
             0 => __DIR__ . '/..' . '/laravel/framework/src/Illuminate/Macroable',
@@ -469,10 +425,6 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
         'GuzzleHttp\\UriTemplate\\' => 
         array (
             0 => __DIR__ . '/..' . '/guzzlehttp/uri-template/src',
-        ),
-        'GuzzleHttp\\Psr7\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/guzzlehttp/psr7/src',
         ),
         'GrahamCampbell\\ResultType\\' => 
         array (
@@ -509,10 +461,6 @@ class ComposerStaticInitb86abea38791058483c7ac9af08d70ac
         'DeepCopy\\' => 
         array (
             0 => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy',
-        ),
-        'DI\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/php-di/php-di/src',
         ),
         'Cron\\' => 
         array (

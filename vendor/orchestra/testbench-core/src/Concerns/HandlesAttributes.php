@@ -3,9 +3,9 @@
 namespace Orchestra\Testbench\Concerns;
 
 use Illuminate\Support\Collection;
-use Orchestra\Testbench\Attributes\FeaturesCollection;
 use Orchestra\Testbench\Contracts\Attributes\Actionable as ActionableContract;
 use Orchestra\Testbench\Contracts\Attributes\Invokable as InvokableContract;
+use Orchestra\Testbench\Features\FeaturesCollection;
 
 /**
  * @internal
@@ -19,15 +19,14 @@ trait HandlesAttributes
      *
      * @param  \Illuminate\Foundation\Application  $app
      * @param  class-string  $attribute
-     * @return \Orchestra\Testbench\Attributes\FeaturesCollection<int, mixed>
+     * @return \Orchestra\Testbench\Features\FeaturesCollection<int, mixed>
      */
     protected function parseTestMethodAttributes($app, string $attribute): Collection
     {
         /** @var \Illuminate\Support\Collection<int, mixed> $attributes */
         $attributes = $this->resolvePhpUnitAttributes()
-            ->filter(static function ($attributes, string $key) use ($attribute) {
-                return $key === $attribute && ! empty($attributes);
-            })->flatten()
+            ->filter(static fn ($attributes, string $key) => $key === $attribute && ! empty($attributes))
+            ->flatten()
             ->map(function ($instance) use ($app) {
                 if ($instance instanceof InvokableContract) {
                     return $instance($app);

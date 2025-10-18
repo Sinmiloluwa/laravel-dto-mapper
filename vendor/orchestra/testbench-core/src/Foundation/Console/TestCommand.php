@@ -4,11 +4,16 @@ namespace Orchestra\Testbench\Foundation\Console;
 
 use Illuminate\Support\Collection;
 use NunoMaduro\Collision\Adapters\Laravel\Commands\TestCommand as Command;
-use Orchestra\Testbench\Foundation\Env;
+use Orchestra\Sidekick\Env;
+use Orchestra\Testbench\Features\ParallelRunner;
 
+use function Orchestra\Sidekick\is_testbench_cli;
 use function Orchestra\Testbench\defined_environment_variables;
 use function Orchestra\Testbench\package_path;
 
+/**
+ * @codeCoverageIgnore
+ */
 class TestCommand extends Command
 {
     /**
@@ -37,25 +42,18 @@ class TestCommand extends Command
      */
     protected $description = 'Run the package tests';
 
-    /**
-     * Create a new command instance.
-     *
-     * @return void
-     */
-    public function __construct()
+    /** {@inheritDoc} */
+    #[\Override]
+    public function configure()
     {
-        parent::__construct();
+        parent::configure();
 
-        if (! \defined('TESTBENCH_WORKING_PATH')) {
+        if (! is_testbench_cli()) {
             $this->setHidden(true);
         }
     }
 
-    /**
-     * Execute the console command.
-     *
-     * @return mixed
-     */
+    /** {@inheritDoc} */
     #[\Override]
     public function handle()
     {
@@ -73,84 +71,63 @@ class TestCommand extends Command
     {
         $configurationFile = str_replace('./', '', $this->option('configuration') ?? 'phpunit.xml');
 
-        return Collection::make([
-            package_path("/{$configurationFile}"),
-            package_path("/{$configurationFile}.dist"),
-        ])->filter(static function ($path) {
-            return file_exists($path);
-        })->first() ?? './';
+        return (new Collection([
+            package_path($configurationFile),
+            package_path("{$configurationFile}.dist"),
+        ]))->transform(static fn ($path) => DIRECTORY_SEPARATOR.$path)
+            ->filter(static fn ($path) => is_file($path))
+            ->first() ?? './';
     }
 
-    /**
-     * Get the array of arguments for running PHPUnit.
-     *
-     * @param  array  $options
-     * @return array
-     */
+    /** {@inheritDoc} */
     #[\Override]
     protected function phpunitArguments($options)
     {
         $file = $this->phpUnitConfigurationFile();
 
-        return Collection::make(parent::phpunitArguments($options))
-            ->reject(static function ($option) {
-                return str_starts_with($option, '--configuration=');
-            })->merge(["--configuration={$file}"])
+        return (new Collection(parent::phpunitArguments($options)))
+            ->reject(static fn ($option) => str_starts_with($option, '--configuration='))
+            ->merge(["--configuration={$file}"])
             ->all();
     }
 
-    /**
-     * Get the array of arguments for running Paratest.
-     *
-     * @param  array  $options
-     * @return array
-     */
+    /** {@inheritDoc} */
     #[\Override]
     protected function paratestArguments($options)
     {
         $file = $this->phpUnitConfigurationFile();
 
-        return Collection::make(parent::paratestArguments($options))
-            ->reject(static function (string $option) {
-                return str_starts_with($option, '--configuration=')
-                    || str_starts_with($option, '--runner=');
-            })->merge([
-                "--configuration={$file}",
-                "--runner=\Orchestra\Testbench\Foundation\ParallelRunner",
+        return (new Collection(parent::paratestArguments($options)))
+            ->reject(static fn (string $option) => str_starts_with($option, '--configuration=') || str_starts_with($option, '--runner='))
+            ->merge([
+                \sprintf('--configuration=%s', $file),
+                \sprintf('--runner=%s', ParallelRunner::class),
             ])->all();
     }
 
-    /**
-     * Get the array of environment variables for running PHPUnit.
-     *
-     * @return array
-     */
+    /** {@inheritDoc} */
     #[\Override]
     protected function phpunitEnvironmentVariables()
     {
-        return Collection::make(defined_environment_variables())
+        return (new Collection(defined_environment_variables()))
             ->merge([
                 'APP_ENV' => 'testing',
                 'TESTBENCH_PACKAGE_TESTER' => '(true)',
-                'TESTBENCH_WORKING_PATH' => TESTBENCH_WORKING_PATH,
+                'TESTBENCH_WORKING_PATH' => package_path(),
                 'TESTBENCH_APP_BASE_PATH' => $this->laravel->basePath(),
             ])->merge(parent::phpunitEnvironmentVariables())
             ->all();
     }
 
-    /**
-     * Get the array of environment variables for running Paratest.
-     *
-     * @return array
-     */
+    /** {@inheritDoc} */
     #[\Override]
     protected function paratestEnvironmentVariables()
     {
-        return Collection::make(defined_environment_variables())
+        return (new Collection(defined_environment_variables()))
             ->merge([
                 'APP_ENV' => 'testing',
                 'TESTBENCH_PACKAGE_TESTER' => '(true)',
-                'TESTBENCH_WORKING_PATH' => TESTBENCH_WORKING_PATH,
+                'TESTBENCH_WORKING_PATH' => package_path(),
                 'TESTBENCH_APP_BASE_PATH' => $this->laravel->basePath(),
             ])->merge(parent::paratestEnvironmentVariables())
             ->all();
@@ -161,7 +138,6 @@ class TestCommand extends Command
      *
      * @return string
      */
-    #[\Override]
     protected function getConfigurationFile()
     {
         return $this->phpUnitConfigurationFile();

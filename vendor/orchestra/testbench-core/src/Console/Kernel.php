@@ -5,6 +5,11 @@ namespace Orchestra\Testbench\Console;
 use Orchestra\Testbench\Foundation\Console\Kernel as ConsoleKernel;
 use Throwable;
 
+use function Orchestra\Sidekick\join_paths;
+
+/**
+ * @codeCoverageIgnore
+ */
 final class Kernel extends ConsoleKernel
 {
     /**
@@ -22,7 +27,7 @@ final class Kernel extends ConsoleKernel
     #[\Override]
     protected function commands()
     {
-        if (file_exists($console = base_path('routes/console.php'))) {
+        if (is_file($console = base_path(join_paths('routes', 'console.php')))) {
             require $console;
         }
     }

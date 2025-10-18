@@ -5,38 +5,49 @@ namespace Orchestra\Testbench\Foundation\Console\Concerns;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\LazyCollection;
+use Orchestra\Sidekick\Env;
+use Orchestra\Testbench\Foundation\Console\TerminatingConsole;
 
+use function Orchestra\Sidekick\join_paths;
+
+/**
+ * @codeCoverageIgnore
+ */
 trait CopyTestbenchFiles
 {
-    use HandleTerminatingConsole;
-
     /**
      * Copy the "testbench.yaml" file.
+     *
+     * @internal
      *
      * @param  \Illuminate\Contracts\Foundation\Application  $app
      * @param  \Illuminate\Filesystem\Filesystem  $filesystem
      * @param  string  $workingPath
+     * @param  bool  $resetOnTerminating
      * @return void
      */
-    protected function copyTestbenchConfigurationFile(Application $app, Filesystem $filesystem, string $workingPath): void
-    {
-        $configurationFile = LazyCollection::make(static function () {
+    protected function copyTestbenchConfigurationFile(
+        Application $app,
+        Filesystem $filesystem,
+        string $workingPath,
+        bool $backupExistingFile = true,
+        bool $resetOnTerminating = true
+    ): void {
+        $configurationFile = (new LazyCollection(static function () {
             yield 'testbench.yaml';
             yield 'testbench.yaml.example';
             yield 'testbench.yaml.dist';
-        })->map(static function ($file) use ($workingPath) {
-            return "{$workingPath}/{$file}";
-        })->filter(static function ($file) use ($filesystem) {
-            return $filesystem->exists($file);
-        })->first();
+        }))->map(static fn ($file) => join_paths($workingPath, $file))
+            ->filter(static fn ($file) => $filesystem->isFile($file))
+            ->first();
 
-        $testbenchFile = $app->basePath('testbench.yaml');
+        $testbenchFile = $app->basePath(join_paths('bootstrap', 'cache', 'testbench.yaml'));
 
-        if ($filesystem->exists($testbenchFile)) {
+        if ($backupExistingFile === true && $filesystem->isFile($testbenchFile)) {
             $filesystem->copy($testbenchFile, "{$testbenchFile}.backup");
 
-            $this->beforeTerminating(static function () use ($filesystem, $testbenchFile) {
-                if ($filesystem->exists("{$testbenchFile}.backup")) {
+            TerminatingConsole::beforeWhen($resetOnTerminating, static function () use ($filesystem, $testbenchFile) {
+                if ($filesystem->isFile("{$testbenchFile}.backup")) {
                     $filesystem->move("{$testbenchFile}.backup", $testbenchFile);
                 }
             });
@@ -45,8 +56,8 @@ trait CopyTestbenchFiles
         if (! \is_null($configurationFile)) {
             $filesystem->copy($configurationFile, $testbenchFile);
 
-            $this->beforeTerminating(static function () use ($filesystem, $testbenchFile) {
-                if ($filesystem->exists($testbenchFile)) {
+            TerminatingConsole::beforeWhen($resetOnTerminating, static function () use ($filesystem, $testbenchFile) {
+                if ($filesystem->isFile($testbenchFile)) {
                     $filesystem->delete($testbenchFile);
                 }
             });
@@ -56,46 +67,78 @@ trait CopyTestbenchFiles
     /**
      * Copy the ".env" file.
      *
+     * @internal
+     *
      * @param  \Illuminate\Contracts\Foundation\Application  $app
      * @param  \Illuminate\Filesystem\Filesystem  $filesystem
      * @param  string  $workingPath
+     * @param  bool  $resetOnTerminating
      * @return void
      */
-    protected function copyTestbenchDotEnvFile(Application $app, Filesystem $filesystem, string $workingPath): void
-    {
-        $workingPath = $filesystem->isDirectory("{$workingPath}/workbench")
-            ? "{$workingPath}/workbench"
+    protected function copyTestbenchDotEnvFile(
+        Application $app,
+        Filesystem $filesystem,
+        string $workingPath,
+        bool $backupExistingFile = true,
+        bool $resetOnTerminating = true
+    ): void {
+        $workingPath = $filesystem->isDirectory(join_paths($workingPath, 'workbench'))
+            ? join_paths($workingPath, 'workbench')
             : $workingPath;
 
-        $configurationFile = LazyCollection::make(function () {
-            yield $this->environmentFile;
-            yield "{$this->environmentFile}.example";
-            yield "{$this->environmentFile}.dist";
-        })->map(fn ($file) => "{$workingPath}/{$file}")
-            ->filter(fn ($file) => $filesystem->exists($file))
+        $testbenchEnvFilename = $this->testbenchEnvironmentFile();
+
+        $configurationFile = (new LazyCollection(static function () use ($testbenchEnvFilename) {
+            $defaultTestbenchEnvFilename = '.env';
+
+            yield $testbenchEnvFilename;
+            yield "{$testbenchEnvFilename}.example";
+            yield "{$testbenchEnvFilename}.dist";
+
+            yield $defaultTestbenchEnvFilename;
+            yield "{$defaultTestbenchEnvFilename}.example";
+            yield "{$defaultTestbenchEnvFilename}.dist";
+        }))->unique()
+            ->map(static fn ($file) => join_paths($workingPath, $file))
+            ->filter(static fn ($file) => $filesystem->isFile($file))
             ->first();
 
-        if (\is_null($configurationFile) && $filesystem->exists($app->basePath('.env.example'))) {
+        if (\is_null($configurationFile) && $filesystem->isFile($app->basePath('.env.example'))) {
             $configurationFile = $app->basePath('.env.example');
         }
 
         $environmentFile = $app->basePath('.env');
-        $environmentFileBackup = "{$this->environmentFile}.backup";
 
-        if ($filesystem->exists($environmentFile)) {
-            $filesystem->copy($environmentFile, $environmentFileBackup);
+        if ($backupExistingFile === true && $filesystem->isFile($environmentFile)) {
+            $filesystem->copy($environmentFile, "{$environmentFile}.backup");
 
-            $this->beforeTerminating(static function () use ($filesystem, $environmentFile, $environmentFileBackup) {
-                $filesystem->move($environmentFileBackup, $environmentFile);
+            TerminatingConsole::beforeWhen($resetOnTerminating, static function () use ($filesystem, $environmentFile) {
+                $filesystem->move("{$environmentFile}.backup", $environmentFile);
             });
         }
 
-        if (! \is_null($configurationFile) && ! $filesystem->exists($environmentFile)) {
+        if (! \is_null($configurationFile)) {
             $filesystem->copy($configurationFile, $environmentFile);
 
-            $this->beforeTerminating(static function () use ($filesystem, $environmentFile) {
+            TerminatingConsole::beforeWhen($resetOnTerminating, static function () use ($filesystem, $environmentFile) {
                 $filesystem->delete($environmentFile);
             });
         }
+    }
+
+    /**
+     * Determine the Testbench's environment file.
+     *
+     * @internal
+     *
+     * @return string
+     */
+    protected function testbenchEnvironmentFile(): string
+    {
+        return match (true) {
+            property_exists($this, 'environmentFile') => $this->environmentFile,
+            Env::has('TESTBENCH_ENVIRONMENT_FILENAME') => Env::get('TESTBENCH_ENVIRONMENT_FILENAME'),
+            default => '.env',
+        };
     }
 }

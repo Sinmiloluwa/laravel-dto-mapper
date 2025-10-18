@@ -23,12 +23,15 @@ class AttributeParser
      * @return array<int, array{key: class-string, instance: object}>
      *
      * @phpstan-return array<int, array{key: class-string<TTestingFeature>, instance: TTestingFeature}>
+     *
+     * @codeCoverageIgnore
      */
     public static function forClass(string $className): array
     {
         $attributes = [];
+        $reflection = new ReflectionClass($className);
 
-        foreach ((new ReflectionClass($className))->getAttributes() as $attribute) {
+        foreach ($reflection->getAttributes() as $attribute) {
             if (! static::validAttribute($attribute->getName())) {
                 continue;
             }
@@ -36,8 +39,14 @@ class AttributeParser
             [$name, $instance] = static::resolveAttribute($attribute);
 
             if (! \is_null($name) && ! \is_null($instance)) {
-                array_push($attributes, ['key' => $name, 'instance' => $instance]);
+                $attributes[] = ['key' => $name, 'instance' => $instance];
             }
+        }
+
+        $parent = $reflection->getParentClass();
+
+        if ($parent && $parent->isSubclassOf(TestCase::class)) {
+            $attributes = [...static::forClass($parent->getName()), ...$attributes];
         }
 
         return $attributes;
@@ -51,6 +60,8 @@ class AttributeParser
      * @return array<int, array{key: class-string, instance: object}>
      *
      * @phpstan-return array<int, array{key: class-string<TTestingFeature>, instance: TTestingFeature}>
+     *
+     * @codeCoverageIgnore
      */
     public static function forMethod(string $className, string $methodName): array
     {
@@ -64,7 +75,7 @@ class AttributeParser
             [$name, $instance] = static::resolveAttribute($attribute);
 
             if (! \is_null($name) && ! \is_null($instance)) {
-                array_push($attributes, ['key' => $name, 'instance' => $instance]);
+                $attributes[] = ['key' => $name, 'instance' => $instance];
             }
         }
 
@@ -79,6 +90,10 @@ class AttributeParser
      */
     public static function validAttribute($class): bool
     {
+        if (\is_string($class) && ! class_exists($class)) {
+            return false;
+        }
+
         $implements = class_implements($class);
 
         return isset($implements[TestingFeature::class])
@@ -95,22 +110,17 @@ class AttributeParser
      */
     protected static function resolveAttribute(ReflectionAttribute $attribute): array
     {
-        return rescue(function () use ($attribute) {
+        return rescue(static function () use ($attribute) {
             /** @var TTestingFeature|null $instance */
             $instance = isset(class_implements($attribute->getName())[ResolvableContract::class])
-                ? transform($attribute->newInstance(), static function ($instance) {
-                    /** @var \Orchestra\Testbench\Contracts\Attributes\Resolvable $instance */
-                    return $instance->resolve();
-                }) : $attribute->newInstance();
+                ? transform($attribute->newInstance(), static fn (ResolvableContract $instance) => $instance->resolve()) /** @phpstan-ignore argument.type */
+                : $attribute->newInstance();
 
             if (\is_null($instance)) {
                 return [null, null];
             }
 
-            /** @var class-string<TTestingFeature> $name */
-            $name = \get_class($instance);
-
-            return [$name, $instance];
+            return [$instance::class, $instance];
         }, [null, null], false);
     }
 }

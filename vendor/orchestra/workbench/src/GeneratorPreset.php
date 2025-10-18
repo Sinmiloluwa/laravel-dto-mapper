@@ -5,6 +5,8 @@ namespace Orchestra\Workbench;
 use BadMethodCallException;
 use Orchestra\Canvas\Core\Presets\Preset;
 
+use function Orchestra\Sidekick\join_paths;
+
 class GeneratorPreset extends Preset
 {
     /**
@@ -64,7 +66,7 @@ class GeneratorPreset extends Preset
      */
     public function viewPath()
     {
-        return rtrim(Workbench::path('resources/views'), DIRECTORY_SEPARATOR);
+        return rtrim(Workbench::path(join_paths('resources', 'views')), DIRECTORY_SEPARATOR);
     }
 
     /**
@@ -74,7 +76,7 @@ class GeneratorPreset extends Preset
      */
     public function factoryPath()
     {
-        return rtrim(Workbench::path('database/factories'), DIRECTORY_SEPARATOR);
+        return rtrim(Workbench::path(join_paths('database', 'factories')), DIRECTORY_SEPARATOR);
     }
 
     /**
@@ -84,7 +86,7 @@ class GeneratorPreset extends Preset
      */
     public function migrationPath()
     {
-        return rtrim(Workbench::path('database/migrations'), DIRECTORY_SEPARATOR);
+        return rtrim(Workbench::path(join_paths('database', 'migrations')), DIRECTORY_SEPARATOR);
     }
 
     /**
@@ -92,7 +94,7 @@ class GeneratorPreset extends Preset
      */
     public function seederPath(): string
     {
-        return rtrim(Workbench::path('database/seeders'), DIRECTORY_SEPARATOR);
+        return rtrim(Workbench::path(join_paths('database', 'seeders')), DIRECTORY_SEPARATOR);
     }
 
     /**
@@ -102,7 +104,7 @@ class GeneratorPreset extends Preset
      */
     public function rootNamespace()
     {
-        return "Workbench\App\\";
+        return Workbench::detectNamespace('app') ?? "Workbench\App\\";
     }
 
     /**
@@ -142,7 +144,7 @@ class GeneratorPreset extends Preset
      */
     public function factoryNamespace()
     {
-        return "Workbench\Database\Factories\\";
+        return Workbench::detectNamespace('database/factories') ?? "Workbench\Database\Factories\\";
     }
 
     /**
@@ -152,7 +154,7 @@ class GeneratorPreset extends Preset
      */
     public function seederNamespace()
     {
-        return "Workbench\Database\Seeders\\";
+        return Workbench::detectNamespace('database/seeders') ?? "Workbench\Database\Seeders\\";
     }
 
     /**

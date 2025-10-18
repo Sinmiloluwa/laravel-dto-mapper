@@ -10,6 +10,8 @@ use Orchestra\Canvas\Core\Concerns\UsesGeneratorOverrides;
 use Orchestra\Canvas\GeneratorPreset;
 use Symfony\Component\Console\Attribute\AsCommand;
 
+use function Illuminate\Filesystem\join_paths;
+
 #[AsCommand(name: 'make:view', description: 'Create a new view')]
 class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
 {
@@ -41,6 +43,7 @@ class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
     #[\Override]
     public function handle()
     {
+        /** @phpstan-ignore return.type */
         return $this->generateCode() ? self::SUCCESS : self::FAILURE;
     }
 
@@ -58,7 +61,7 @@ class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
             return parent::resolveStubPath($stub);
         }
 
-        return $preset->hasCustomStubPath() && file_exists($customPath = implode('/', [$preset->basePath(), trim($stub, '/')]))
+        return $preset->hasCustomStubPath() && file_exists($customPath = join_paths($preset->basePath(), $stub))
             ? $customPath
             : $this->resolveDefaultStubPath($stub);
     }
@@ -71,7 +74,7 @@ class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
      */
     protected function resolveDefaultStubPath($stub)
     {
-        return __DIR__.$stub;
+        return join_paths(__DIR__, $stub);
     }
 
     /**
@@ -84,11 +87,24 @@ class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
     protected function getPath($name)
     {
         /** @var string $extension */
+        /** @phpstan-ignore argument.type */
         $extension = transform($this->option('extension'), fn (string $extension) => trim($extension));
 
         return $this->viewPath(
             $this->getNameInput().'.'.$extension,
         );
+    }
+
+    /**
+     * Get the first view directory path from the application configuration.
+     *
+     * @param  string  $path
+     * @return string
+     */
+    #[\Override]
+    protected function viewPath($path = '')
+    {
+        return $this->viewPathUsingCanvas($path);
     }
 
     /**
@@ -99,6 +115,7 @@ class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
     #[\Override]
     protected function getNameInput()
     {
+        /** @phpstan-ignore argument.type */
         return transform($this->argument('name'), function (string $name) {
             return str_replace(['\\', '.'], '/', trim($name));
         });
@@ -167,8 +184,8 @@ class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
         $preset = $this->generatorPreset();
 
         $testPath = Str::of($this->testClassFullyQualifiedName())
-            ->replace('\\', '/')
-            ->replaceFirst('Tests/Feature', str_replace($preset->basePath(), '', $preset->testingPath()).'/Feature')
+            ->replace('\\', DIRECTORY_SEPARATOR)
+            ->replaceFirst(join_paths('Tests', 'Feature'), join_paths(str_replace($preset->basePath(), '', $preset->testingPath()), 'Feature'))
             ->append('Test.php')
             ->value();
 
@@ -185,6 +202,6 @@ class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
     {
         $stubName = 'view.'.($this->option('pest') ? 'pest' : 'test').'.stub';
 
-        return $this->resolveStubPath("/stubs/{$stubName}");
+        return $this->resolveStubPath(join_paths('stubs', $stubName));
     }
 }

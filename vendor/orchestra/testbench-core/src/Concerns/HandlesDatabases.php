@@ -5,9 +5,10 @@ namespace Orchestra\Testbench\Concerns;
 use Closure;
 use Illuminate\Database\Events\DatabaseRefreshed;
 use Orchestra\Testbench\Attributes\DefineDatabase;
-use Orchestra\Testbench\Attributes\ResetRefreshDatabaseState;
 use Orchestra\Testbench\Attributes\WithMigration;
-use Orchestra\Testbench\Exceptions\ApplicationNotAvailableException;
+use Orchestra\Testbench\Features\TestingFeature;
+
+use function Orchestra\Testbench\laravel_or_fail;
 
 /**
  * @internal
@@ -21,38 +22,32 @@ trait HandlesDatabases
      */
     protected function setUpDatabaseRequirements(Closure $callback): void
     {
-        if (\is_null($app = $this->app)) {
-            throw ApplicationNotAvailableException::make(__METHOD__);
-        }
+        $app = laravel_or_fail($this->app);
 
         $app['events']->listen(DatabaseRefreshed::class, function () {
             $this->defineDatabaseMigrationsAfterDatabaseRefreshed();
         });
 
         if (static::usesTestingConcern(WithLaravelMigrations::class)) {
-            $this->setUpWithLaravelMigrations(); // @phpstan-ignore-line
+            $this->setUpWithLaravelMigrations(); /** @phpstan-ignore method.notFound */
         }
 
-        $this->resolveTestbenchTestingFeature(
-            attribute: function () use ($app) {
-                $this->parseTestMethodAttributes($app, ResetRefreshDatabaseState::class);
-                $this->parseTestMethodAttributes($app, WithMigration::class);
-            },
+        TestingFeature::run(
+            testCase: $this,
+            attribute: fn () => $this->parseTestMethodAttributes($app, WithMigration::class),
         );
 
-        $attributeCallbacks = $this->resolveTestbenchTestingFeature(
+        $attributeCallbacks = TestingFeature::run(
+            testCase: $this,
             default: function () {
                 $this->defineDatabaseMigrations();
                 $this->beforeApplicationDestroyed(fn () => $this->destroyDatabaseMigrations());
             },
             annotation: fn () => $this->parseTestMethodAnnotations($app, 'define-db'),
             attribute: fn () => $this->parseTestMethodAttributes($app, DefineDatabase::class),
-            pest: function ($default) {
-                $this->defineDatabaseMigrationsUsingPest(); // @phpstan-ignore-line
-
-                $this->beforeApplicationDestroyed(fn () => $this->destroyDatabaseMigrationsUsingPest()); // @phpstan-ignore-line
-
-                value($default);
+            pest: function () {
+                $this->defineDatabaseMigrationsUsingPest(); /** @phpstan-ignore method.notFound */
+                $this->beforeApplicationDestroyed(fn () => $this->destroyDatabaseMigrationsUsingPest()); /** @phpstan-ignore method.notFound */
             },
         )->get('attribute');
 
@@ -60,13 +55,10 @@ trait HandlesDatabases
 
         $attributeCallbacks->handle();
 
-        $this->resolveTestbenchTestingFeature(
+        TestingFeature::run(
+            testCase: $this,
             default: fn () => $this->defineDatabaseSeeders(),
-            pest: function ($default) {
-                $this->defineDatabaseSeedersUsingPest(); // @phpstan-ignore-line
-
-                value($default);
-            }
+            pest: fn () => $this->defineDatabaseSeedersUsingPest(), /** @phpstan-ignore method.notFound */
         );
     }
 
@@ -78,15 +70,13 @@ trait HandlesDatabases
      */
     protected function usesSqliteInMemoryDatabaseConnection(?string $connection = null): bool
     {
-        if (\is_null($app = $this->app)) {
-            throw ApplicationNotAvailableException::make(__METHOD__);
-        }
+        $app = laravel_or_fail($this->app);
 
         /** @var \Illuminate\Contracts\Config\Repository $config */
         $config = $app->make('config');
 
         /** @var string $connection */
-        $connection = ! \is_null($connection) ? $connection : $config->get('database.default');
+        $connection ??= $config->get('database.default');
 
         /** @var array{driver: string, database: string}|null $database */
         $database = $config->get("database.connections.{$connection}");

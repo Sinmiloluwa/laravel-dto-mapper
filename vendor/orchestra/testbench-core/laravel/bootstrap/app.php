@@ -1,9 +1,11 @@
 <?php
 
-use Illuminate\Support\Env;
 use Orchestra\Testbench\Foundation\Application;
+use Orchestra\Testbench\Foundation\Bootstrap\SyncTestbenchCachedRoutes;
 use Orchestra\Testbench\Foundation\Config;
 use Orchestra\Testbench\Workbench\Workbench;
+
+use function Orchestra\Sidekick\join_paths;
 
 /**
  * Create Laravel application.
@@ -13,12 +15,13 @@ use Orchestra\Testbench\Workbench\Workbench;
  */
 $createApp = static function (string $workingPath) {
     $config = Config::loadFromYaml(
-        defined('TESTBENCH_WORKING_PATH') ? TESTBENCH_WORKING_PATH : $workingPath
+        workingPath: defined('TESTBENCH_WORKING_PATH') ? TESTBENCH_WORKING_PATH : $workingPath,
+        filename: defined('TESTBENCH_WORKING_PATH') ? 'testbench.yaml' : join_paths($workingPath, 'bootstrap', 'cache', 'testbench.yaml')
     );
 
     $hasEnvironmentFile = ! is_null($config['laravel'])
-        ? file_exists($config['laravel'].'/.env')
-        : file_exists("{$workingPath}/.env");
+        ? is_file(join_paths($config['laravel'], '.env'))
+        : is_file(join_paths($workingPath, '.env'));
 
     return Application::create(
         basePath: $config['laravel'],
@@ -30,20 +33,10 @@ $createApp = static function (string $workingPath) {
     );
 };
 
-if (! defined('TESTBENCH_WORKING_PATH') && ! is_null(Env::get('TESTBENCH_WORKING_PATH'))) {
-    define('TESTBENCH_WORKING_PATH', Env::get('TESTBENCH_WORKING_PATH'));
-}
-
-$app = $createApp(realpath(__DIR__.'/../'));
+$app = $createApp(realpath(join_paths(__DIR__, '..')));
 
 unset($createApp);
 
-/** @var \Illuminate\Routing\Router $router */
-$router = $app->make('router');
-
-collect(glob(__DIR__.'/../routes/testbench-*.php'))
-    ->each(static function ($routeFile) use ($app, $router) {
-        require $routeFile;
-    });
+(new SyncTestbenchCachedRoutes)->bootstrap($app);
 
 return $app;

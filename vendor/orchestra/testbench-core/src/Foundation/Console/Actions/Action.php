@@ -2,31 +2,27 @@
 
 namespace Orchestra\Testbench\Foundation\Console\Actions;
 
-use function Orchestra\Testbench\package_path;
+use function Orchestra\Testbench\transform_realpath_to_relative;
 
+/**
+ * @api
+ */
 abstract class Action
 {
-    /**
-     * Working path for the action.
-     *
-     * @var string|null
-     */
-    public $workingPath;
-
     /**
      * Normalise file location.
      *
      * @param  string  $path
      * @return string
+     *
+     * @deprecated
+     *
+     * @codeCoverageIgnore
      */
     protected function pathLocation(string $path): string
     {
-        if (! \is_null($this->workingPath)) {
-            $path = str_replace(rtrim($this->workingPath, '/').'/', '', $path);
-        }
-
-        $path = str_replace(package_path(), '', $path);
-
-        return $path;
+        return transform_realpath_to_relative(
+            $path, property_exists($this, 'workingPath') ? $this->workingPath : null
+        );
     }
 }

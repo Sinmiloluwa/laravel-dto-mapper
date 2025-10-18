@@ -4,6 +4,11 @@ namespace Orchestra\Testbench\Exceptions;
 
 use Illuminate\Support\Collection;
 
+/**
+ * @internal
+ *
+ * @codeCoverageIgnore
+ */
 class DeprecatedException extends PHPUnitErrorException
 {
     /**
@@ -26,7 +31,7 @@ class DeprecatedException extends PHPUnitErrorException
      */
     public function __toString(): string
     {
-        $traces = Collection::make($this->getPHPUnitExceptionTrace())
+        $traces = (new Collection($this->getPHPUnitExceptionTrace()))
             ->transform(function (array $trace): ?string {
                 if ((isset($trace['class']) && \in_array($trace['class'], $this->testbenchExceptionHandlers()))
                     || ! isset($trace['file'])
@@ -34,10 +39,10 @@ class DeprecatedException extends PHPUnitErrorException
                     return null;
                 }
 
-                return sprintf('%s:%d', $trace['file'], $trace['line']);
+                return \sprintf('%s:%d', $trace['file'], $trace['line']);
             })->filter()
             ->values();
 
-        return sprintf('%s'.PHP_EOL.PHP_EOL.'%s', $this->getMessage(), $traces->join(PHP_EOL));
+        return \sprintf('%s'.PHP_EOL.PHP_EOL.'%s', $this->getMessage(), $traces->join(PHP_EOL));
     }
 }

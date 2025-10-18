@@ -12,6 +12,7 @@ trait InteractsWithWorkbench
 {
     use InteractsWithPest;
     use InteractsWithPHPUnit;
+    use InteractsWithTestCase;
 
     /**
      * Get Application's base path.
@@ -64,15 +65,24 @@ trait InteractsWithWorkbench
      * Get package providers.
      *
      * @param  \Illuminate\Foundation\Application  $app
-     * @return array<int, class-string>|null
+     * @return array<int, class-string<\Illuminate\Support\ServiceProvider>>|null
      */
     protected function getPackageProvidersUsingWorkbench($app): ?array
     {
-        if (empty($providers = static::cachedConfigurationForWorkbench()?->getExtraAttributes()['providers'] ?? null)) {
+        $config = static::cachedConfigurationForWorkbench();
+
+        $hasAuthentication = $config?->getWorkbenchAttributes()['auth'] ?? false;
+        $providers = $config?->getExtraAttributes()['providers'] ?? [];
+
+        if ($hasAuthentication === true && class_exists('Orchestra\Workbench\AuthServiceProvider')) {
+            $providers[] = 'Orchestra\Workbench\AuthServiceProvider';
+        }
+
+        if (empty($providers)) {
             return null;
         }
 
-        return static::usesTestingConcern(WithWorkbench::class)
+        return static::usesTestingConcern(WithWorkbench::class) || ! static::usesTestingConcern()
             ? Arr::wrap($providers)
             : [];
     }

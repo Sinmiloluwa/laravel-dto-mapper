@@ -2,11 +2,30 @@
 
 namespace Orchestra\Testbench\Foundation;
 
+use Illuminate\Console\Application as Artisan;
+use Illuminate\Console\Scheduling\ScheduleListCommand;
+use Illuminate\Console\Signals;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Schema\Builder as SchemaBuilder;
 use Illuminate\Foundation\Bootstrap\LoadEnvironmentVariables;
+use Illuminate\Foundation\Console\AboutCommand;
+use Illuminate\Foundation\Console\ChannelListCommand;
+use Illuminate\Foundation\Console\RouteListCommand;
+use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
+use Illuminate\Foundation\Http\Middleware\TrimStrings;
+use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Queue\Queue;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Sleep;
+use Illuminate\Support\Str;
+use Illuminate\View\Component;
+use Orchestra\Testbench\Bootstrap\HandleExceptions;
+use Orchestra\Testbench\Bootstrap\RegisterProviders;
 use Orchestra\Testbench\Concerns\CreatesApplication;
 use Orchestra\Testbench\Contracts\Config as ConfigContract;
 use Orchestra\Testbench\Workbench\Workbench;
+
+use function Orchestra\Sidekick\join_paths;
 
 /**
  * @api
@@ -23,9 +42,16 @@ use Orchestra\Testbench\Workbench\Workbench;
 class Application
 {
     use CreatesApplication {
-        resolveApplication as protected resolveApplicationFromTrait;
+        resolveApplicationResolvingCallback as protected resolveApplicationResolvingCallbackFromTrait;
         resolveApplicationConfiguration as protected resolveApplicationConfigurationFromTrait;
     }
+
+    /**
+     * The Illuminate application instance.
+     *
+     * @var \Illuminate\Foundation\Application|null
+     */
+    protected $app;
 
     /**
      * The application base path.
@@ -41,7 +67,7 @@ class Application
      *
      * @phpstan-var TExtraConfig
      */
-    protected $config = [
+    protected array $config = [
         'env' => [],
         'providers' => [],
         'dont-discover' => [],
@@ -80,9 +106,10 @@ class Application
      * @param  string|null  $basePath
      * @param  (callable(\Illuminate\Foundation\Application):(void))|null  $resolvingCallback
      * @param  array<string, mixed>  $options
-     * @return static
      *
      * @phpstan-param TConfig  $options
+     *
+     * @return static
      */
     public static function make(?string $basePath = null, ?callable $resolvingCallback = null, array $options = [])
     {
@@ -95,16 +122,17 @@ class Application
      * @param  \Orchestra\Testbench\Contracts\Config  $config
      * @param  (callable(\Illuminate\Foundation\Application):(void))|null  $resolvingCallback
      * @param  array<string, mixed>  $options
-     * @return static
      *
      * @phpstan-param TConfig  $options
+     *
+     * @return static
      */
     public static function makeFromConfig(ConfigContract $config, ?callable $resolvingCallback = null, array $options = [])
     {
         $basePath = $config['laravel'] ?? static::applicationBasePath();
 
         return (new static($config['laravel'], $resolvingCallback))->configure(array_merge($options, [
-            'load_environment_variables' => file_exists("{$basePath}/.env"),
+            'load_environment_variables' => is_file("{$basePath}/.env"),
             'extra' => $config->getExtraAttributes(),
         ]));
     }
@@ -122,7 +150,24 @@ class Application
     {
         $app = static::create(basePath: $basePath, options: ['extra' => ['dont-discover' => ['*']]]);
 
-        (new Bootstrap\CreateVendorSymlink($workingVendorPath))->bootstrap($app);
+        (new Actions\CreateVendorSymlink($workingVendorPath))->handle($app);
+
+        return $app;
+    }
+
+    /**
+     * Delete symlink to vendor path via new application instance.
+     *
+     * @param  string|null  $basePath
+     * @return \Illuminate\Foundation\Application
+     *
+     * @codeCoverageIgnore
+     */
+    public static function deleteVendorSymlink(?string $basePath)
+    {
+        $app = static::create(basePath: $basePath, options: ['extra' => ['dont-discover' => ['*']]]);
+
+        (new Actions\DeleteVendorSymlink)->handle($app);
 
         return $app;
     }
@@ -133,9 +178,10 @@ class Application
      * @param  string|null  $basePath
      * @param  (callable(\Illuminate\Foundation\Application):(void))|null  $resolvingCallback
      * @param  array<string, mixed>  $options
-     * @return \Illuminate\Foundation\Application
      *
      * @phpstan-param TConfig  $options
+     *
+     * @return \Illuminate\Foundation\Application
      */
     public static function create(?string $basePath = null, ?callable $resolvingCallback = null, array $options = [])
     {
@@ -148,9 +194,10 @@ class Application
      * @param  \Orchestra\Testbench\Contracts\Config  $config
      * @param  (callable(\Illuminate\Foundation\Application):(void))|null  $resolvingCallback
      * @param  array<string, mixed>  $options
-     * @return \Illuminate\Foundation\Application
      *
      * @phpstan-param TConfig  $options
+     *
+     * @return \Illuminate\Foundation\Application
      */
     public static function createFromConfig(ConfigContract $config, ?callable $resolvingCallback = null, array $options = [])
     {
@@ -158,12 +205,50 @@ class Application
     }
 
     /**
+     * Flush the application states.
+     *
+     * @param  \Orchestra\Testbench\Console\Commander|\Orchestra\Testbench\PHPUnit\TestCase|null  $instance
+     * @return void
+     */
+    public static function flushState(?object $instance = null): void
+    {
+        AboutCommand::flushState();
+        Artisan::forgetBootstrappers();
+        ChannelListCommand::resolveTerminalWidthUsing(null);
+        Component::flushCache();
+        Component::forgetComponentsResolver();
+        Component::forgetFactory();
+        ConvertEmptyStringsToNull::flushState();
+        HandleExceptions::forgetApp();
+        JsonResource::wrap('data');
+        Model::handleDiscardedAttributeViolationUsing(null);
+        Model::handleLazyLoadingViolationUsing(null);
+        Model::handleMissingAttributeViolationUsing(null);
+        Model::preventAccessingMissingAttributes(false);
+        Model::preventLazyLoading(false);
+        Model::preventSilentlyDiscardingAttributes(false);
+        Queue::createPayloadUsing(null);
+        RegisterProviders::flushState();
+        RouteListCommand::resolveTerminalWidthUsing(null);
+        ScheduleListCommand::resolveTerminalWidthUsing(null);
+        SchemaBuilder::$defaultStringLength = 255;
+        SchemaBuilder::$defaultMorphKeyType = 'int';
+        Signals::resolveAvailabilityUsing(null);
+        Sleep::fake(false);
+        Str::createRandomStringsNormally();
+        Str::createUlidsNormally();
+        Str::createUuidsNormally();
+        TrimStrings::flushState();
+    }
+
+    /**
      * Configure the application options.
      *
      * @param  array<string, mixed>  $options
-     * @return $this
      *
      * @phpstan-param TConfig  $options
+     *
+     * @return $this
      */
     public function configure(array $options)
     {
@@ -220,25 +305,28 @@ class Application
     }
 
     /**
-     * Resolve application implementation.
+     * Resolve application resolving callback.
      *
-     * @return \Illuminate\Foundation\Application
+     * @param  \Illuminate\Foundation\Application  $app
+     * @return void
      */
-    protected function resolveApplication()
+    private function resolveApplicationResolvingCallback($app): void
     {
-        return tap($this->resolveApplicationFromTrait(), function ($app) {
-            if (\is_callable($this->resolvingCallback)) {
-                \call_user_func($this->resolvingCallback, $app);
-            }
-        });
+        $this->resolveApplicationResolvingCallbackFromTrait($app);
+
+        if (\is_callable($this->resolvingCallback)) {
+            \call_user_func($this->resolvingCallback, $app);
+        }
     }
 
     /**
-     * Get base path.
+     * Resolve the application's base path.
+     *
+     * @api
      *
      * @return string
      */
-    protected function getBasePath()
+    protected function getApplicationBasePath()
     {
         return $this->basePath ?? static::applicationBasePath();
     }
@@ -274,7 +362,7 @@ class Application
     {
         $this->resolveApplicationConfigurationFromTrait($app);
 
-        (new Bootstrap\EnsuresDefaultConfiguration())->bootstrap($app);
+        (new Bootstrap\EnsuresDefaultConfiguration)->bootstrap($app);
     }
 
     /**
@@ -287,7 +375,7 @@ class Application
     {
         $kernel = Workbench::applicationConsoleKernel() ?? 'Orchestra\Testbench\Console\Kernel';
 
-        if (file_exists($app->basePath('app/Console/Kernel.php')) && class_exists('App\Console\Kernel')) {
+        if (is_file($app->basePath(join_paths('app', 'Console', 'Kernel.php'))) && class_exists('App\Console\Kernel')) {
             $kernel = 'App\Console\Kernel';
         }
 
@@ -304,7 +392,7 @@ class Application
     {
         $kernel = Workbench::applicationHttpKernel() ?? 'Orchestra\Testbench\Http\Kernel';
 
-        if (file_exists($app->basePath('app/Http/Kernel.php')) && class_exists('App\Http\Kernel')) {
+        if (is_file($app->basePath(join_paths('app', 'Http', 'Kernel.php'))) && class_exists('App\Http\Kernel')) {
             $kernel = 'App\Http\Kernel';
         }
 

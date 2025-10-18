@@ -7,8 +7,11 @@ use Illuminate\Foundation\PackageManifest as IlluminatePackageManifest;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
+use function Orchestra\Sidekick\is_testbench_cli;
+use function Orchestra\Testbench\package_path;
+
 /**
- * @internal
+ * @api
  */
 class PackageManifest extends IlluminatePackageManifest
 {
@@ -30,11 +33,8 @@ class PackageManifest extends IlluminatePackageManifest
     ];
 
     /**
-     * Create a new package manifest instance.
+     * {@inheritDoc}
      *
-     * @param  \Illuminate\Filesystem\Filesystem  $files
-     * @param  string  $basePath
-     * @param  string  $manifestPath
      * @param  \Orchestra\Testbench\Contracts\TestCase|object|null  $testbench
      */
     public function __construct(Filesystem $files, $basePath, $manifestPath, $testbench = null)
@@ -88,11 +88,7 @@ class PackageManifest extends IlluminatePackageManifest
         return $this;
     }
 
-    /**
-     * Get the current package manifest.
-     *
-     * @return array
-     */
+    /** {@inheritDoc} */
     #[\Override]
     protected function getManifest()
     {
@@ -102,11 +98,11 @@ class PackageManifest extends IlluminatePackageManifest
 
         $ignoreAll = \in_array('*', $ignore);
 
-        return Collection::make(parent::getManifest())
-            ->reject(function ($configuration, $package) use ($ignore, $ignoreAll) {
-                return ($ignoreAll && ! \in_array($package, $this->requiredPackages))
-                    || \in_array($package, $ignore);
-            })->map(static function ($configuration, $key) {
+        $requires = $this->requiredPackages;
+
+        return (new Collection(parent::getManifest()))
+            ->reject(static fn ($configuration, $package) => ($ignoreAll && ! \in_array($package, $requires)) || \in_array($package, $ignore))
+            ->map(static function ($configuration, $package) {
                 foreach ($configuration['providers'] ?? [] as $provider) {
                     if (! class_exists($provider)) {
                         return null;
@@ -117,11 +113,7 @@ class PackageManifest extends IlluminatePackageManifest
             })->filter()->all();
     }
 
-    /**
-     * Get all of the package names that should be ignored.
-     *
-     * @return array
-     */
+    /** {@inheritDoc} */
     #[\Override]
     protected function packagesToIgnore()
     {
@@ -149,9 +141,9 @@ class PackageManifest extends IlluminatePackageManifest
      */
     protected function providersFromTestbench()
     {
-        if (\defined('TESTBENCH_WORKING_PATH') && is_file(TESTBENCH_WORKING_PATH.'/composer.json')) {
+        if (is_testbench_cli() && is_file($composerFile = package_path('composer.json'))) {
             /** @var array{name: string, extra?: array{laravel?: array}} $composer */
-            $composer = $this->files->json(TESTBENCH_WORKING_PATH.'/composer.json');
+            $composer = $this->files->json($composerFile);
 
             return $composer;
         }
@@ -159,19 +151,12 @@ class PackageManifest extends IlluminatePackageManifest
         return null;
     }
 
-    /**
-     * Write the given manifest array to disk.
-     *
-     * @param  array  $manifest
-     * @return void
-     *
-     * @throws \Exception
-     */
+    /** {@inheritDoc} */
     #[\Override]
     protected function write(array $manifest)
     {
         parent::write(
-            Collection::make($manifest)->merge($this->providersFromRoot())->filter()->all()
+            (new Collection($manifest))->merge($this->providersFromRoot())->filter()->all()
         );
     }
 }

@@ -5,21 +5,19 @@ namespace Orchestra\Testbench\Concerns;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Closure;
-use Illuminate\Console\Application as Artisan;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Foundation\Bootstrap\HandleExceptions;
-use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
-use Illuminate\Foundation\Http\Middleware\TrimStrings;
-use Illuminate\Queue\Queue;
 use Illuminate\Support\Facades\ParallelTesting;
-use Illuminate\Support\Sleep;
-use Illuminate\View\Component;
-use Mockery;
+use Orchestra\Testbench\Foundation\Application as Testbench;
 use PHPUnit\Framework\TestCase as PHPUnitTestCase;
 use Throwable;
 
 trait ApplicationTestingHooks
 {
+    use InteractsWithMockery;
+    use InteractsWithPest;
+    use InteractsWithPHPUnit;
+    use InteractsWithTestCase;
+
     /**
      * The Illuminate application instance.
      *
@@ -32,21 +30,21 @@ trait ApplicationTestingHooks
      *
      * @var array<int, callable():void>
      */
-    protected $afterApplicationCreatedCallbacks = [];
+    protected array $afterApplicationCreatedCallbacks = [];
 
     /**
      * The callbacks that should be run after the application is refreshed.
      *
      * @var array<int, callable():void>
      */
-    protected $afterApplicationRefreshedCallbacks = [];
+    protected array $afterApplicationRefreshedCallbacks = [];
 
     /**
      * The callbacks that should be run before the application is destroyed.
      *
      * @var array<int, callable():void>
      */
-    protected $beforeApplicationDestroyedCallbacks = [];
+    protected array $beforeApplicationDestroyedCallbacks = [];
 
     /**
      * The exception thrown while running an application destruction callback.
@@ -72,6 +70,8 @@ trait ApplicationTestingHooks
     {
         if (! $this->app) {
             $this->refreshApplication();
+
+            $this->setUpTheTestEnvironmentUsingTestCase();
 
             $this->setUpParallelTestingCallbacks();
         }
@@ -105,6 +105,8 @@ trait ApplicationTestingHooks
         if ($this->app) {
             $this->callBeforeApplicationDestroyedCallbacks();
 
+            $this->tearDownTheTestEnvironmentUsingTestCase();
+
             $this->tearDownParallelTestingCallbacks();
 
             $this->app?->flush();
@@ -118,13 +120,7 @@ trait ApplicationTestingHooks
             \call_user_func($callback);
         }
 
-        if (class_exists(Mockery::class) && $this instanceof PHPUnitTestCase) {
-            if ($container = Mockery::getContainer()) {
-                $this->addToAssertionCount($container->mockery_getExpectationCount());
-            }
-
-            Mockery::close();
-        }
+        $this->tearDownTheTestEnvironmentUsingMockery();
 
         Carbon::setTestNow();
 
@@ -135,15 +131,7 @@ trait ApplicationTestingHooks
         $this->afterApplicationCreatedCallbacks = [];
         $this->beforeApplicationDestroyedCallbacks = [];
 
-        Artisan::forgetBootstrappers();
-        Component::flushCache();
-        Component::forgetComponentsResolver();
-        Component::forgetFactory();
-        ConvertEmptyStringsToNull::flushState();
-        HandleExceptions::forgetApp();
-        Queue::createPayloadUsing(null);
-        Sleep::fake(false);
-        TrimStrings::flushState();
+        Testbench::flushState();
 
         if ($this->callbackException) {
             throw $this->callbackException;
@@ -156,7 +144,8 @@ trait ApplicationTestingHooks
     protected function setUpParallelTestingCallbacks(): void
     {
         if ($this instanceof PHPUnitTestCase) {
-            ParallelTesting::callSetUpTestCaseCallbacks($this); // @phpstan-ignore-line
+            /** @phpstan-ignore staticMethod.notFound, argument.type */
+            ParallelTesting::callSetUpTestCaseCallbacks($this);
         }
     }
 
@@ -166,7 +155,8 @@ trait ApplicationTestingHooks
     protected function tearDownParallelTestingCallbacks(): void
     {
         if ($this instanceof PHPUnitTestCase) {
-            ParallelTesting::callTearDownTestCaseCallbacks($this); // @phpstan-ignore-line
+            /** @phpstan-ignore staticMethod.notFound, argument.type */
+            ParallelTesting::callTearDownTestCaseCallbacks($this);
         }
     }
 

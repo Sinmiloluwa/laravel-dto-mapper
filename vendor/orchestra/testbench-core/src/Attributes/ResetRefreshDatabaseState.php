@@ -4,17 +4,38 @@ namespace Orchestra\Testbench\Attributes;
 
 use Attribute;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
-use Orchestra\Testbench\Contracts\Attributes\Invokable as InvokableContract;
+use Orchestra\Testbench\Contracts\Attributes\AfterAll as AfterAllContract;
+use Orchestra\Testbench\Contracts\Attributes\BeforeAll as BeforeAllContract;
 
-#[Attribute(Attribute::TARGET_CLASS | Attribute::TARGET_METHOD)]
-final class ResetRefreshDatabaseState implements InvokableContract
+#[Attribute(Attribute::TARGET_CLASS)]
+final class ResetRefreshDatabaseState implements AfterAllContract, BeforeAllContract
 {
     /**
      * Handle the attribute.
      *
-     * @param  \Illuminate\Foundation\Application  $app
+     * @codeCoverageIgnore
      */
-    public function __invoke($app): void
+    public function beforeAll(): void
+    {
+        self::run();
+    }
+
+    /**
+     * Handle the attribute.
+     *
+     * @codeCoverageIgnore
+     */
+    public function afterAll(): void
+    {
+        self::run();
+    }
+
+    /**
+     * Execute the action.
+     *
+     * @return void
+     */
+    public static function run(): void
     {
         RefreshDatabaseState::$migrated = false;
         RefreshDatabaseState::$lazilyRefreshed = false;

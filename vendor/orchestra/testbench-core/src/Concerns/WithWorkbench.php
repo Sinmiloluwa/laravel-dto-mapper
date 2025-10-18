@@ -2,6 +2,9 @@
 
 namespace Orchestra\Testbench\Concerns;
 
+use Illuminate\Foundation\Testing\Traits\CanConfigureMigrationCommands;
+use Illuminate\Support\Collection;
+use Orchestra\Testbench\Contracts\Config as ConfigContract;
 use Orchestra\Testbench\Foundation\Bootstrap\LoadMigrationsFromArray;
 use Orchestra\Testbench\Workbench\Workbench;
 
@@ -10,6 +13,7 @@ use Orchestra\Testbench\Workbench\Workbench;
  */
 trait WithWorkbench
 {
+    use InteractsWithPHPUnit;
     use InteractsWithWorkbench;
 
     /**
@@ -27,8 +31,14 @@ trait WithWorkbench
 
         Workbench::start($app, $config);
 
+        $seeders = $config['seeders'] ?? false;
+
+        $seeders = static::usesTestingConcern(CanConfigureMigrationCommands::class)
+            ? $this->mergeSeedersForWorkbench($config)
+            : ($config['seeders'] ?? false);
+
         (new LoadMigrationsFromArray(
-            $config['migrations'] ?? [], $config['seeders'] ?? false,
+            $config['migrations'] ?? [], $seeders,
         ))->bootstrap($app);
     }
 
@@ -44,5 +54,33 @@ trait WithWorkbench
         $config = static::cachedConfigurationForWorkbench();
 
         Workbench::discoverRoutes($app, $config);
+    }
+
+    /**
+     * Merge seeders for Workbench.
+     *
+     * @param  \Orchestra\Testbench\Contracts\Config  $config
+     * @return array<int, class-string>|false
+     */
+    protected function mergeSeedersForWorkbench(ConfigContract $config): array|false
+    {
+        $seeders = $config['seeders'] ?? false;
+
+        if ($this->shouldSeed() === false || $seeders === false) {
+            return false;
+        }
+
+        $testCaseSeeder = $this->seeder();
+
+        /** @var class-string $testCaseSeeder */
+        $testCaseSeeder = $testCaseSeeder !== false
+            ? $testCaseSeeder
+            : \Database\Seeders\DatabaseSeeder::class;
+
+        $seeders = (new Collection($seeders))
+            ->reject(static fn ($seeder) => $seeder === $testCaseSeeder)
+            ->values();
+
+        return $seeders->isEmpty() ? false : $seeders->all();
     }
 }

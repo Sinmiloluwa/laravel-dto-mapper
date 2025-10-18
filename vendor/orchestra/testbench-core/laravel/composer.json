@@ -5,17 +5,15 @@
     "license": "MIT",
     "type": "project",
     "autoload": {
-        "classmap": [
-            "database",
-            "tests/TestCase.php"
-        ],
         "psr-4": {
-            "App\\": "app/"
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
         }
     },
-    "extra": {
-        "laravel": {
-            "dont-discover": []
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
         }
     },
     "minimum-stability": "dev"

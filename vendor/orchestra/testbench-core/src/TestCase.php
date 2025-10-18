@@ -15,6 +15,7 @@ abstract class TestCase extends PHPUnit\TestCase implements Contracts\TestCase
     use Testing\Concerns\InteractsWithExceptionHandling;
     use Testing\Concerns\InteractsWithSession;
     use Testing\Concerns\InteractsWithTime;
+    use Testing\Concerns\InteractsWithViews;
     use Testing\Concerns\MakesHttpRequests;
 
     /**
@@ -95,6 +96,7 @@ abstract class TestCase extends PHPUnit\TestCase implements Contracts\TestCase
             Testing\Concerns\InteractsWithExceptionHandling::class,
             Testing\Concerns\InteractsWithSession::class,
             Testing\Concerns\InteractsWithTime::class,
+            Testing\Concerns\InteractsWithViews::class,
             Testing\Concerns\MakesHttpRequests::class,
             Concerns\ApplicationTestingHooks::class,
             Concerns\CreatesApplication::class,
@@ -102,8 +104,9 @@ abstract class TestCase extends PHPUnit\TestCase implements Contracts\TestCase
             Concerns\HandlesAnnotations::class,
             Concerns\HandlesDatabases::class,
             Concerns\HandlesRoutes::class,
-            Concerns\InteractsWithMigrations::class,
+            Concerns\InteractsWithPest::class,
             Concerns\InteractsWithPHPUnit::class,
+            Concerns\InteractsWithTestCase::class,
             Concerns\InteractsWithWorkbench::class,
             Concerns\Testing::class,
             Concerns\WithFactories::class,
@@ -132,7 +135,13 @@ abstract class TestCase extends PHPUnit\TestCase implements Contracts\TestCase
     public static function setUpBeforeClass(): void
     {
         static::setUpBeforeClassUsingPHPUnit();
-        static::setUpBeforeClassUsingPest();
+
+        /** @phpstan-ignore class.notFound */
+        if (static::usesTestingConcern(Pest\WithPest::class)) {
+            static::setUpBeforeClassUsingPest(); /** @phpstan-ignore staticMethod.notFound */
+        }
+
+        static::setUpBeforeClassUsingTestCase();
         static::setUpBeforeClassUsingWorkbench();
     }
 
@@ -146,10 +155,14 @@ abstract class TestCase extends PHPUnit\TestCase implements Contracts\TestCase
     #[\Override]
     public static function tearDownAfterClass(): void
     {
-        static::$latestResponse = null;
-
         static::tearDownAfterClassUsingWorkbench();
-        static::tearDownAfterClassUsingPest();
+        static::tearDownAfterClassUsingTestCase();
+
+        /** @phpstan-ignore class.notFound */
+        if (static::usesTestingConcern(Pest\WithPest::class)) {
+            static::tearDownAfterClassUsingPest(); /** @phpstan-ignore staticMethod.notFound */
+        }
+
         static::tearDownAfterClassUsingPHPUnit();
     }
 }

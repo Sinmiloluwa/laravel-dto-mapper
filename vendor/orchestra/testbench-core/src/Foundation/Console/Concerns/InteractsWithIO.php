@@ -2,8 +2,12 @@
 
 namespace Orchestra\Testbench\Foundation\Console\Concerns;
 
+use function Orchestra\Testbench\package_path;
+
 /**
  * @deprecated
+ *
+ * @codeCoverageIgnore
  */
 trait InteractsWithIO
 {
@@ -18,12 +22,13 @@ trait InteractsWithIO
      */
     protected function copyTaskCompleted(string $from, string $to, string $type, ?string $workingPath = null): void
     {
-        $workingPath = $workingPath ?? TESTBENCH_WORKING_PATH;  // @phpstan-ignore-line
+        $workingPath = $workingPath ?? package_path();
+
         $from = str_replace($workingPath.'/', '', (string) realpath($from));
 
         $to = str_replace($workingPath.'/', '', (string) realpath($to));
 
-        $this->components->task(sprintf(
+        $this->components->task(\sprintf(
             'Copying %s [%s] to [%s]',
             $type,
             $from,

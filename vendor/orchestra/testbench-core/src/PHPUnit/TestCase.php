@@ -2,16 +2,30 @@
 
 namespace Orchestra\Testbench\PHPUnit;
 
+use Orchestra\Testbench\Concerns\HandlesAssertions;
+use Orchestra\Testbench\Concerns\InteractsWithMockery;
 use Orchestra\Testbench\Exceptions\DeprecatedException;
 use Throwable;
 
-use function Orchestra\Testbench\phpunit_version_compare;
+use function Orchestra\Sidekick\phpunit_version_compare;
 
 if (phpunit_version_compare('10.1', '>=')) {
     class TestCase extends \PHPUnit\Framework\TestCase
     {
+        use HandlesAssertions;
+        use InteractsWithMockery;
+
+        /** {@inheritDoc} */
+        #[\Override]
+        protected function tearDown(): void
+        {
+            $this->tearDownTheTestEnvironmentUsingMockery();
+        }
+
         /**
-         * {@inheritdoc}
+         * {@inheritDoc}
+         *
+         * @codeCoverageIgnore
          */
         #[\Override]
         protected function transformException(Throwable $error): Throwable
@@ -29,8 +43,20 @@ if (phpunit_version_compare('10.1', '>=')) {
 } else {
     class TestCase extends \PHPUnit\Framework\TestCase
     {
+        use HandlesAssertions;
+        use InteractsWithMockery;
+
+        /** {@inheritDoc} */
+        #[\Override]
+        protected function tearDown(): void
+        {
+            $this->tearDownTheTestEnvironmentUsingMockery();
+        }
+
         /**
-         * {@inheritdoc}
+         * {@inheritDoc}
+         *
+         * @codeCoverageIgnore
          */
         #[\Override]
         protected function runTest(): mixed

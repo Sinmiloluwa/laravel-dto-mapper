@@ -11,6 +11,8 @@ use Illuminate\Support\Fluent;
 
 /**
  * @api
+ *
+ * @codeCoverageIgnore
  */
 trait WithSqlite
 {
@@ -38,7 +40,7 @@ trait WithSqlite
                             {
                                 public function dropForeign($index)
                                 {
-                                    return new Fluent();
+                                    return new Fluent;
                                 }
                             };
                         }

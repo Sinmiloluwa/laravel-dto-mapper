@@ -2,6 +2,8 @@
 
 namespace Orchestra\Testbench\Bootstrap;
 
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\LazyCollection;
 use Orchestra\Testbench\Workbench\Workbench;
@@ -19,7 +21,7 @@ class LoadConfigurationWithWorkbench extends LoadConfiguration
      *
      * @var bool
      */
-    protected $usesWorkbenchConfigFile = false;
+    protected bool $usesWorkbenchConfigFile = false;
 
     /**
      * Construct a new bootstrap class.
@@ -30,27 +32,29 @@ class LoadConfigurationWithWorkbench extends LoadConfiguration
             && is_dir(workbench_path('config'));
     }
 
-    /**
-     * Resolve the configuration file.
-     *
-     * @param  string  $path
-     * @param  string  $key
-     * @return string
-     */
+    /** {@inheritDoc} */
+    #[\Override]
+    public function bootstrap(Application $app): void
+    {
+        parent::bootstrap($app);
+
+        $userModel = Workbench::applicationUserModel();
+
+        if (! \is_null($userModel) && is_a($userModel, Authenticatable::class, true)) {
+            $app->make('config')->set('auth.providers.users.model', $userModel);
+        }
+    }
+
+    /** {@inheritDoc} */
     #[\Override]
     protected function resolveConfigurationFile(string $path, string $key): string
     {
-        return $this->usesWorkbenchConfigFile === true && is_file(workbench_path("config/{$key}.php"))
-            ? workbench_path("config/{$key}.php")
-            : $path;
+        $config = workbench_path('config', "{$key}.php");
+
+        return $this->usesWorkbenchConfigFile === true && is_file($config) ? $config : $path;
     }
 
-    /**
-     * Extend the loaded configuration.
-     *
-     * @param  \Illuminate\Support\Collection  $configurations
-     * @return \Illuminate\Support\Collection
-     */
+    /** {@inheritDoc} */
     #[\Override]
     protected function extendsLoadedConfiguration(Collection $configurations): Collection
     {
@@ -58,15 +62,18 @@ class LoadConfigurationWithWorkbench extends LoadConfiguration
             return $configurations;
         }
 
-        LazyCollection::make(static function () {
-            foreach (Finder::create()->files()->name('*.php')->in(workbench_path('config')) as $file) {
-                yield basename($file->getRealPath(), '.php') => $file->getRealPath();
+        (new LazyCollection(function () {
+            $path = workbench_path('config');
+
+            foreach (Finder::create()->files()->name('*.php')->in($path) as $file) {
+                $directory = $this->getNestedDirectory($file, $path);
+
+                yield $directory.basename($file->getRealPath(), '.php') => $file->getRealPath();
             }
-        })->reject(static function ($path, $key) use ($configurations) {
-            return $configurations->has($key);
-        })->each(static function ($path, $key) use ($configurations) {
-            $configurations->put($key, $path);
-        });
+        }))->reject(static fn ($path, $key) => $configurations->has($key))
+            ->each(static function ($path, $key) use ($configurations) {
+                $configurations->put($key, $path);
+            });
 
         return $configurations;
     }

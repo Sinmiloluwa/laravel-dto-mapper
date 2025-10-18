@@ -12,7 +12,7 @@ class RecipeManager extends Manager implements Contracts\RecipeManager
      */
     public function createAssetPublishDriver(): Contracts\Recipe
     {
-        return new Recipes\AssetPublishCommand();
+        return new Recipes\AssetPublishCommand;
     }
 
     /**
@@ -20,7 +20,7 @@ class RecipeManager extends Manager implements Contracts\RecipeManager
      */
     public function createCreateSqliteDbDriver(): Contracts\Recipe
     {
-        return new Recipes\Command('workbench:create-sqlite-db', callback: static function () {
+        return $this->commandUsing('workbench:create-sqlite-db', callback: static function () {
             if (config('database.default') === 'testing') {
                 config(['database.default' => 'sqlite']);
             }
@@ -32,7 +32,7 @@ class RecipeManager extends Manager implements Contracts\RecipeManager
      */
     public function createDropSqliteDbDriver(): Contracts\Recipe
     {
-        return new Recipes\Command('workbench:drop-sqlite-db', callback: static function () {
+        return $this->commandUsing('workbench:drop-sqlite-db', callback: static function () {
             if (config('database.default') === 'sqlite') {
                 config(['database.default' => 'testing']);
             }
@@ -40,11 +40,33 @@ class RecipeManager extends Manager implements Contracts\RecipeManager
     }
 
     /**
-     * Create anonymous command driver.
+     * Create "purge-skeleton" driver.
      */
-    public function commandUsing(string $command): Contracts\Recipe
+    protected function createPurgeSkeletonDriver(): Contracts\Recipe
     {
-        return new Recipes\Command($command);
+        return $this->commandUsing('workbench:purge-skeleton');
+    }
+
+    /**
+     * Create "sync-skeleton" driver.
+     */
+    protected function createSyncSkeletonDriver(): Contracts\Recipe
+    {
+        return $this->commandUsing('workbench:sync-skeleton');
+    }
+
+    /**
+     * Create anonymous command driver.
+     *
+     * @param  array<string, mixed>  $options
+     */
+    public function commandUsing(string $command, array $options = [], ?callable $callback = null): Contracts\Recipe
+    {
+        return new Recipes\Command(
+            command: $command,
+            options: $options,
+            callback: $callback,
+        );
     }
 
     /**

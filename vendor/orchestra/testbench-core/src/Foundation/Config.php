@@ -3,13 +3,14 @@
 namespace Orchestra\Testbench\Foundation;
 
 use Illuminate\Support\Arr;
-use Illuminate\Support\Fluent;
 use Illuminate\Support\LazyCollection;
+use Orchestra\Sidekick\FluentDecorator;
 use Orchestra\Testbench\Contracts\Config as ConfigContract;
 use Symfony\Component\Yaml\Yaml;
 
+use function Orchestra\Sidekick\join_paths;
+use function Orchestra\Sidekick\transform_relative_path;
 use function Orchestra\Testbench\parse_environment_variables;
-use function Orchestra\Testbench\transform_relative_path;
 
 /**
  * @api
@@ -18,13 +19,13 @@ use function Orchestra\Testbench\transform_relative_path;
  *   env: array,
  *   providers: array<int, class-string>,
  *   dont-discover: array<int, string>,
- *   bootstrappers: class-string|array<int, class-string>|null
+ *   bootstrappers: array<int, class-string>|class-string|null
  * }
  * @phpstan-type TOptionalExtraConfig array{
  *   env?: array,
  *   providers?: array<int, class-string>,
  *   dont-discover?: array<int, string>,
- *   bootstrappers?: class-string|array<int, class-string>|null
+ *   bootstrappers?: array<int, class-string>|class-string|null
  * }
  * @phpstan-type TPurgeConfig array{
  *   directories: array<int, string>,
@@ -39,9 +40,10 @@ use function Orchestra\Testbench\transform_relative_path;
  *   user: string|int|null,
  *   guard: string|null,
  *   install: bool,
+ *   auth: bool,
  *   welcome: bool|null,
- *   sync: array<int, array{from: string, to: string}>,
- *   build: array<int, string>,
+ *   sync: array<int, array{from: string, to: string, reverse?: bool}>,
+ *   build: array<int|string, array<string, mixed>|string>,
  *   assets: array<int, string>,
  *   discovers: TWorkbenchDiscoversConfig
  * }
@@ -50,14 +52,16 @@ use function Orchestra\Testbench\transform_relative_path;
  *   user?: string|int|null,
  *   guard?: string|null,
  *   install?: bool,
+ *   auth?: bool,
  *   welcome?: bool|null,
- *   sync?: array<int, array{from: string, to: string}>,
- *   build?: array<int, string>,
+ *   sync?: array<int, array{from: string, to: string, reverse?: bool}>,
+ *   build?: array<int|string, array<string, mixed>|string>,
  *   assets?: array<int, string>,
  *   discovers?: TWorkbenchOptionalDiscoversConfig
  * }
  * @phpstan-type TWorkbenchDiscoversConfig array{
  *   config: bool,
+ *   factories: bool,
  *   web: bool,
  *   api: bool,
  *   commands: bool,
@@ -66,6 +70,7 @@ use function Orchestra\Testbench\transform_relative_path;
  * }
  * @phpstan-type TWorkbenchOptionalDiscoversConfig array{
  *   config?: bool,
+ *   factories?: bool,
  *   web?: bool,
  *   api?: bool,
  *   commands?: bool,
@@ -77,9 +82,9 @@ use function Orchestra\Testbench\transform_relative_path;
  *   env: array,
  *   providers: array<int, class-string>,
  *   dont-discover: array<int, string>,
- *   bootstrappers: class-string|array<int, class-string>|null,
- *   migrations: string|array<int, string>|bool,
- *   seeders: class-string|array<int, class-string>|bool,
+ *   bootstrappers: array<int, class-string>|class-string|null,
+ *   migrations: array<int, string>|bool|string,
+ *   seeders: array<int, class-string>|bool|class-string,
  *   purge: TOptionalPurgeConfig,
  *   workbench: TOptionalWorkbenchConfig
  * }
@@ -88,14 +93,14 @@ use function Orchestra\Testbench\transform_relative_path;
  *   env?: array,
  *   providers?: array<int, class-string>,
  *   dont-discover?: array<int, string>,
- *   bootstrappers?: class-string|array<int, class-string>|null,
- *   migrations?: string|array<int, string>|bool,
- *   seeders?: class-string|array<int, class-string>|bool,
+ *   bootstrappers?: array<int, class-string>|class-string|null,
+ *   migrations?: array<int, string>|bool|string,
+ *   seeders?: array<int, class-string>|bool|class-string,
  *   purge?: TOptionalPurgeConfig|null,
  *   workbench?: TOptionalWorkbenchConfig|null
  * }
  */
-class Config extends Fluent implements ConfigContract
+class Config extends FluentDecorator implements ConfigContract
 {
     /**
      * All of the attributes set on the fluent instance.
@@ -104,7 +109,7 @@ class Config extends Fluent implements ConfigContract
      *
      * @phpstan-var TConfig
      */
-    protected $attributes = [
+    protected array $defaultAttributes = [
         'laravel' => null,
         'env' => [],
         'providers' => [],
@@ -140,12 +145,14 @@ class Config extends Fluent implements ConfigContract
         'user' => null,
         'guard' => null,
         'install' => true,
+        'auth' => false,
         'welcome' => null,
         'sync' => [],
         'build' => [],
         'assets' => [],
         'discovers' => [
             'config' => false,
+            'factories' => false,
             'web' => false,
             'api' => false,
             'commands' => false,
@@ -163,6 +170,7 @@ class Config extends Fluent implements ConfigContract
      */
     protected array $workbenchDiscoversConfig = [
         'config' => false,
+        'factories' => false,
         'web' => false,
         'api' => false,
         'commands' => false,
@@ -178,6 +186,18 @@ class Config extends Fluent implements ConfigContract
     protected static $cachedConfiguration;
 
     /**
+     * Construct a new Config instance.
+     *
+     * @param  iterable<string, mixed>  $attributes
+     *
+     * @phpstan-param TOptionalConfig $attributes
+     */
+    public function __construct($attributes = [])
+    {
+        parent::__construct(array_replace($this->defaultAttributes, $attributes));
+    }
+
+    /**
      * Load configuration from Yaml file.
      *
      * @param  string  $workingPath
@@ -190,13 +210,14 @@ class Config extends Fluent implements ConfigContract
         $filename = $filename ?? 'testbench.yaml';
         $config = $defaults;
 
-        $filename = LazyCollection::make(static function () use ($filename) {
+        $filename = (new LazyCollection(static function () use ($filename) {
             yield $filename;
             yield "{$filename}.example";
             yield "{$filename}.dist";
-        })->filter(static function ($file) use ($workingPath) {
-            return file_exists($workingPath.DIRECTORY_SEPARATOR.$file);
-        })->first();
+        }))->map(static function ($file) use ($workingPath) {
+            return str_contains($file, DIRECTORY_SEPARATOR) ? $file : join_paths($workingPath, $file);
+        })->filter(static fn ($file) => is_file($file))
+            ->first();
 
         if (! \is_null($filename)) {
             /**
@@ -204,10 +225,16 @@ class Config extends Fluent implements ConfigContract
              *
              * @phpstan-var TOptionalConfig $config
              */
-            $config = Yaml::parseFile($workingPath.DIRECTORY_SEPARATOR.$filename);
+            $config = Yaml::parseFile($filename);
 
             $config['laravel'] = transform(Arr::get($config, 'laravel'), static function ($path) use ($workingPath) {
-                return transform_relative_path($path, $workingPath);
+                $laravel = match ($path) {
+                    '@testbench' => \Orchestra\Testbench\default_skeleton_path(),
+                    '@testbench-dusk' => \Orchestra\Testbench\Dusk\default_skeleton_path(), // @phpstan-ignore function.notFound
+                    default => $path,
+                };
+
+                return transform_relative_path($laravel, $workingPath);
             });
 
             if (isset($config['env']) && \is_array($config['env']) && Arr::isAssoc($config['env'])) {
@@ -241,7 +268,7 @@ class Config extends Fluent implements ConfigContract
      */
     public function addProviders(array $providers)
     {
-        $this->attributes['providers'] = array_unique(array_merge($this->attributes['providers'], $providers));
+        $this->fluent['providers'] = array_unique(array_merge($this->fluent['providers'], $providers));
 
         return $this;
     }
@@ -255,11 +282,13 @@ class Config extends Fluent implements ConfigContract
      */
     public function getExtraAttributes(): array
     {
+        $attributes = $this->fluent->getAttributes();
+
         return [
-            'env' => Arr::get($this->attributes, 'env', []),
-            'bootstrappers' => Arr::get($this->attributes, 'bootstrappers', []),
-            'providers' => Arr::get($this->attributes, 'providers', []),
-            'dont-discover' => Arr::get($this->attributes, 'dont-discover', []),
+            'env' => Arr::get($attributes, 'env', []),
+            'bootstrappers' => Arr::get($attributes, 'bootstrappers', []),
+            'providers' => Arr::get($attributes, 'providers', []),
+            'dont-discover' => Arr::get($attributes, 'dont-discover', []),
         ];
     }
 
@@ -272,10 +301,13 @@ class Config extends Fluent implements ConfigContract
      */
     public function getPurgeAttributes(): array
     {
-        return array_merge(
+        $config = array_merge(
             $this->purgeConfig,
-            $this->attributes['purge'],
+            $this->fluent['purge'],
         );
+
+        /** @var TPurgeConfig $config */
+        return $config;
     }
 
     /**
@@ -287,14 +319,16 @@ class Config extends Fluent implements ConfigContract
      */
     public function getWorkbenchAttributes(): array
     {
+        $attributes = $this->fluent->getAttributes();
+
         $config = array_merge(
             $this->workbenchConfig,
-            $this->attributes['workbench'],
+            $attributes['workbench'],
         );
 
         $config['discovers'] = array_merge(
             $this->workbenchDiscoversConfig,
-            Arr::get($this->attributes, 'workbench.discovers', [])
+            Arr::get($attributes, 'workbench.discovers', [])
         );
 
         /** @var TWorkbenchConfig $config */

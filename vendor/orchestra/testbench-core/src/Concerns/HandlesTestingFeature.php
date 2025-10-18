@@ -3,11 +3,11 @@
 namespace Orchestra\Testbench\Concerns;
 
 use Closure;
-use Illuminate\Support\Fluent;
-use Orchestra\Testbench\Attributes\FeaturesCollection;
-use Orchestra\Testbench\Pest\WithPest;
-use PHPUnit\Framework\TestCase as PHPUnitTestCase;
+use Orchestra\Testbench\Features\TestingFeature;
 
+/**
+ * @deprecated
+ */
 trait HandlesTestingFeature
 {
     /**
@@ -17,7 +17,11 @@ trait HandlesTestingFeature
      * @param  (\Closure():(void))|null  $annotation
      * @param  (\Closure():(mixed))|null  $attribute
      * @param  (\Closure(\Closure|null):(mixed))|null  $pest
-     * @return \Illuminate\Support\Fluent<array-key, mixed>
+     * @return \Illuminate\Support\Fluent
+     *
+     * @deprecated
+     *
+     * @codeCoverageIgnore
      */
     protected function resolveTestbenchTestingFeature(
         ?Closure $default = null,
@@ -25,24 +29,12 @@ trait HandlesTestingFeature
         ?Closure $attribute = null,
         ?Closure $pest = null
     ) {
-        /** @var \Illuminate\Support\Fluent{attribute: \Orchestra\Testbench\Attributes\FeaturesCollection} $result */
-        $result = new Fluent(['attribute' => new FeaturesCollection()]);
-
-        if ($this instanceof PHPUnitTestCase && static::usesTestingConcern(HandlesAnnotations::class)) {
-            value($annotation);
-        }
-
-        if ($this instanceof PHPUnitTestCase && static::usesTestingConcern(HandlesAttributes::class)) {
-            $result['attribute'] = value($attribute);
-        }
-
-        /** @phpstan-ignore-next-line */
-        if ($this instanceof PHPUnitTestCase && static::usesTestingConcern(WithPest::class)) {
-            $pest instanceof Closure ? value($pest, $default) : value($default);
-        } else {
-            value($default);
-        }
-
-        return $result;
+        return TestingFeature::run(
+            testCase: $this,
+            default: $default,
+            annotation: $annotation,
+            attribute: $attribute,
+            pest: $pest
+        );
     }
 }

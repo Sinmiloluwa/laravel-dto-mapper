@@ -6,7 +6,7 @@ use Attribute;
 use Orchestra\Testbench\Contracts\Attributes\Resolvable as ResolvableContract;
 use Orchestra\Testbench\Contracts\Attributes\TestingFeature;
 
-#[Attribute(Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
+#[Attribute(Attribute::TARGET_CLASS | Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
 final class Define implements ResolvableContract
 {
     /**
@@ -18,9 +18,7 @@ final class Define implements ResolvableContract
     public function __construct(
         public string $group,
         public string $method
-    ) {
-        //
-    }
+    ) {}
 
     /**
      * Resolve the actual attribute class.
@@ -29,15 +27,11 @@ final class Define implements ResolvableContract
      */
     public function resolve(): ?TestingFeature
     {
-        switch (strtolower($this->group)) {
-            case 'env':
-                return new DefineEnvironment($this->method);
-            case 'db':
-                return new DefineDatabase($this->method);
-            case 'route':
-                return new DefineRoute($this->method);
-            default:
-                return null;
-        }
+        return match (strtolower($this->group)) {
+            'env' => new DefineEnvironment($this->method),
+            'db' => new DefineDatabase($this->method),
+            'route' => new DefineRoute($this->method),
+            default => null,
+        };
     }
 }

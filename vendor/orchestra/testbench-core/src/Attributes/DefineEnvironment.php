@@ -6,7 +6,7 @@ use Attribute;
 use Closure;
 use Orchestra\Testbench\Contracts\Attributes\Actionable as ActionableContract;
 
-#[Attribute(Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
+#[Attribute(Attribute::TARGET_CLASS | Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
 final class DefineEnvironment implements ActionableContract
 {
     /**
@@ -16,9 +16,7 @@ final class DefineEnvironment implements ActionableContract
      */
     public function __construct(
         public string $method
-    ) {
-        //
-    }
+    ) {}
 
     /**
      * Handle the attribute.
