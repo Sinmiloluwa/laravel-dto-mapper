@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'sinmiloluwa/laravel-dto-mapper',
-        'pretty_version' => '1.0.0+no-version-set',
-        'version' => '1.0.0.0',
-        'reference' => null,
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
+        'reference' => 'e8d41497356c1550cd343ab2a9f8b667468c8979',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -940,9 +940,9 @@
             'dev_requirement' => true,
         ),
         'sinmiloluwa/laravel-dto-mapper' => array(
-            'pretty_version' => '1.0.0+no-version-set',
-            'version' => '1.0.0.0',
-            'reference' => null,
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
+            'reference' => 'e8d41497356c1550cd343ab2a9f8b667468c8979',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
