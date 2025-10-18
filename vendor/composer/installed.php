@@ -3,7 +3,7 @@
         'name' => 'sinmiloluwa/laravel-dto-mapper',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '8f7557a85aea5171b7d18163582f8526d2acc178',
+        'reference' => '4c9c8678821e750af1db4ccdf8d03f6c97152383',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -902,7 +902,7 @@
         'sinmiloluwa/laravel-dto-mapper' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '8f7557a85aea5171b7d18163582f8526d2acc178',
+            'reference' => '4c9c8678821e750af1db4ccdf8d03f6c97152383',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
