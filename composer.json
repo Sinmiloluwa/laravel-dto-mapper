@@ -10,7 +10,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "LaravelDtoMapper\\DtoServiceProvider"
+                "Sinmiloluwa\\LaravelDtoMapper\\DtoServiceProvider"
             ]
         }
     },
