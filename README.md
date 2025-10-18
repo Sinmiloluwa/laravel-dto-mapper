@@ -8,7 +8,7 @@
 
 ---
 
-### 🚀 Features
+### 🚀  Features
 
 - ✅ Map Eloquent models or arrays to typed DTOs
 - 🎯 Supports PHP 8+ attributes (`#[MapFrom]`, `#[Cast]`)
@@ -18,7 +18,7 @@
 
 ---
 
-## 📦 Installation
+## 📦  Installation
 
 ```bash
 composer require sinmiloluwa/laravel-dto-mapper
